@@ -17,7 +17,7 @@ class WelcomeView extends StatelessWidget {
             const Icon(Icons.hub_rounded, size: 76, color: AppColors.citizen),
             const SizedBox(height: 16),
             const Text(
-              'CIVORA',
+              'JanYukti',
               style: TextStyle(
                 fontSize: 31,
                 fontWeight: FontWeight.w900,

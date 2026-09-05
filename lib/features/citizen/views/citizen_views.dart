@@ -11,7 +11,7 @@ class CitizenDashboard extends StatelessWidget {
   Widget build(BuildContext c) {
     final s = StoreScope.of(c);
     return PageFrame(
-      title: 'CIVORA',
+      title: 'JanYukti',
       color: AppColors.citizen,
       actions: [
         const Icon(Icons.notifications_none),
