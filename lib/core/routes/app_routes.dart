@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../features/auth/views/auth_views.dart';
-import '../../features/citizen/views/citizen_views.dart';
+import '../../features/auth/views/otp_view.dart';
+import '../../features/citizen/views/trach_challange_view.dart';
 import '../../features/university/views/university_views.dart';
 import '../../features/industry/views/industry_views.dart';
 import '../../features/admin/views/admin_views.dart';
