@@ -1,1 +1,19 @@
-class Project { Project({required this.name,required this.university,required this.category,this.progress=40,this.mentor='Dr. Priya Sharma'}); final String name,university,category,mentor; int progress; final List<String> milestones=['Problem Analysis','Research & Feasibility','Prototype Development','Field Testing','Deployment']; int activeMilestone=1; }
+class Project {
+  Project({
+    required this.name,
+    required this.university,
+    required this.category,
+    this.progress = 40,
+    this.mentor = 'Dr. Priya Sharma',
+  });
+  final String name, university, category, mentor;
+  int progress;
+  final List<String> milestones = [
+    'Problem Analysis',
+    'Research & Feasibility',
+    'Prototype Development',
+    'Field Testing',
+    'Deployment',
+  ];
+  int activeMilestone = 1;
+}

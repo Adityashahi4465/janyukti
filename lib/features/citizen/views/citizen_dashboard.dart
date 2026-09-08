@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../models/challenge_model.dart';
 import '../../../shared/mock_data/app_store.dart';
 import '../../../shared/widgets/ui.dart';
+import '../../../theme/app_colors.dart';
 import '../widgets/challange_card.dart';
 
 class CitizenDashboard extends StatelessWidget {
@@ -17,12 +17,16 @@ class CitizenDashboard extends StatelessWidget {
       actions: [
         const Icon(Icons.notifications_none),
         const SizedBox(width: 12),
+        IconButton(
+          onPressed: () => Navigator.pushNamed(c, Routes.roleSelection),
+          icon: const Icon(Icons.logout_outlined),
+        ),
       ],
       child: ListView(
         padding: const EdgeInsets.all(18),
         children: [
           const Text(
-            'Hello, Aarav 👋',
+            'Hello, Tishika 👋',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
           ),
           const Text(
@@ -46,16 +50,36 @@ class CitizenDashboard extends StatelessWidget {
             icon: const Icon(Icons.track_changes),
             label: const Text('My Challenges'),
           ),
+          const SizedBox(height: 24),
+
+          Text(
+            'Your Impact',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: AppColors.title,
+            ),
+          ),
+          const SizedBox(height: 8),
+
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Stat('${s.challenges.length}', 'Challenges', AppColors.citizen),
-              const SizedBox(width: 8),
               const Stat('1', 'In Progress', AppColors.citizen),
-              const SizedBox(width: 8),
-              const Stat('12', 'People Impacted', AppColors.citizen),
+              const Stat('12', 'Impacted', AppColors.citizen),
             ],
           ),
-          section('Recent Challenges'),
+          const SizedBox(height: 24),
+
+          Text(
+            'Recent Challenges',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: AppColors.title,
+            ),
+          ),
           ...s.challenges.map(
             (x) => ChallengeCard(
               x,

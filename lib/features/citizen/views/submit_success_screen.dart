@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../models/challenge_model.dart';
 import '../../../shared/widgets/ui.dart';
+import '../../../theme/app_colors.dart';
 
 class SubmissionSuccess extends StatelessWidget {
   const SubmissionSuccess({super.key, required this.challenge});

@@ -1,1 +1,4 @@
-class Milestone { const Milestone(this.name,this.status); final String name,status; }
+class Milestone {
+  const Milestone(this.name, this.status);
+  final String name, status;
+}

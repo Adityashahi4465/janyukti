@@ -1,1 +1,20 @@
-class Challenge { Challenge({required this.id,required this.title,required this.category,required this.location,required this.description,this.status='In Progress',this.priority='Medium',this.submittedBy='Aarav Kumar'}); final String id,title,category,location,description,priority,submittedBy; String status; }
+class Challenge {
+  Challenge({
+    required this.id,
+    required this.title,
+    required this.category,
+    required this.location,
+    required this.description,
+    this.status = 'In Progress',
+    this.priority = 'Medium',
+    this.submittedBy = 'Aarav Kumar',
+  });
+  final String id,
+      title,
+      category,
+      location,
+      description,
+      priority,
+      submittedBy;
+  String status;
+}

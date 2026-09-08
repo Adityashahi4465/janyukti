@@ -1,6 +1,278 @@
-import 'package:flutter/material.dart';import '../../../core/constants/app_colors.dart';import '../../../core/routes/app_routes.dart';import '../../../models/challenge_model.dart';import '../../../shared/mock_data/app_store.dart';import '../../../shared/widgets/ui.dart';
-class AdminDashboard extends StatelessWidget{const AdminDashboard({super.key});@override Widget build(BuildContext c){final s=StoreScope.of(c);return PageFrame(title:'Admin Dashboard',color:AppColors.admin,child:ListView(padding:const EdgeInsets.all(18),children:[Row(children:[Stat('${s.challenges.length+1244}','Total Challenges',AppColors.admin),const SizedBox(width:8),const Stat('120','Universities',AppColors.admin),const SizedBox(width:8),const Stat('320','Industries',AppColors.admin)]),section('Challenge status'),AppCard(child:Row(mainAxisAlignment:MainAxisAlignment.spaceAround,children:[_chart('Under Review',.25,AppColors.warning),_chart('Assigned',.45,AppColors.admin),_chart('Resolved',.7,AppColors.success)])),section('Recent challenges'),...s.challenges.map((x)=>AppCard(onTap:()=>Navigator.pushNamed(c,Routes.review,arguments:x),child:ListTile(contentPadding:EdgeInsets.zero,title:Text(x.title,style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text(x.location),trailing:const Icon(Icons.arrow_forward_ios,size:15)))),const SizedBox(height:12),RoleButton(label:'Analytics Dashboard',color:AppColors.admin,onTap:()=>Navigator.pushNamed(c,Routes.analytics),icon:Icons.analytics)]));}Widget _chart(String x,double h,Color c)=>Column(children:[Container(width:38,height:88*h,decoration:BoxDecoration(color:c,borderRadius:BorderRadius.circular(8))),const SizedBox(height:8),Text(x,style:const TextStyle(fontSize:10))]);}
-class ChallengeReview extends StatefulWidget{const ChallengeReview({super.key,required this.x});final Challenge x;@override State<ChallengeReview> createState()=>_ChallengeReviewState();}class _ChallengeReviewState extends State<ChallengeReview>{String uni='BIT Mesra';@override Widget build(BuildContext c)=>PageFrame(title:'Assign to University',color:AppColors.admin,child:ListView(padding:const EdgeInsets.all(18),children:[AppCard(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(widget.x.id,style:const TextStyle(fontWeight:FontWeight.w900)),const SizedBox(height:8),Text(widget.x.title,style:const TextStyle(fontSize:18,fontWeight:FontWeight.w800)),Text('Submitted by ${widget.x.submittedBy}'),Text(widget.x.location)])),const SizedBox(height:14),DropdownButtonFormField(value:uni,items:['BIT Mesra','Ranchi University','IIT ISM'].map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),onChanged:(x)=>setState(()=>uni=x!),decoration:const InputDecoration(labelText:'Select university')),const SizedBox(height:22),RoleButton(label:'Assign Challenge',color:AppColors.admin,onTap:(){StoreScope.of(c).assign(widget.x,uni);ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('Challenge assigned to $uni')));Navigator.pop(c);})]));}
-class AnalyticsView extends StatelessWidget{const AnalyticsView({super.key});@override Widget build(BuildContext c)=>PageFrame(title:'Analytics Dashboard',color:AppColors.admin,child:ListView(padding:const EdgeInsets.all(18),children:[section('Challenges over time'),AppCard(child:SizedBox(height:170,child:CustomPaint(painter:_LinePainter()))),section('Top categories'),AppCard(child:Column(children:[_row('Water Management',.62,AppColors.admin),_row('Agriculture',.42,AppColors.citizen),_row('Healthcare',.28,AppColors.industry)])),section('Status summary'),AppCard(child:const Wrap(spacing:12,children:[StatusPill('In Progress'),StatusPill('Under Review'),StatusPill('Assigned')]))]));Widget _row(String x,double v,Color c)=>Padding(padding:const EdgeInsets.symmetric(vertical:8),child:Row(children:[SizedBox(width:130,child:Text(x)),Expanded(child:LinearProgressIndicator(value:v,color:c)),const SizedBox(width:8),Text('${(v*100).round()}%')]));}
-class _LinePainter extends CustomPainter{@override void paint(Canvas c,Size s){final p=Paint()..color=AppColors.admin..strokeWidth=3..style=PaintingStyle.stroke;final path=Path()..moveTo(4,s.height*.75)..lineTo(s.width*.18,s.height*.55)..lineTo(s.width*.35,s.height*.68)..lineTo(s.width*.52,s.height*.35)..lineTo(s.width*.7,s.height*.48)..lineTo(s.width-4,s.height*.16);c.drawPath(path,p);}@override bool shouldRepaint(covariant CustomPainter old)=>false;}
-class ProjectMonitoring extends StatelessWidget{const ProjectMonitoring({super.key});@override Widget build(BuildContext c){final s=StoreScope.of(c);return PageFrame(title:'Project Monitoring',color:AppColors.admin,child:ListView(padding:const EdgeInsets.all(18),children:[for(final p in s.projects) AppCard(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(p.name,style:const TextStyle(fontWeight:FontWeight.w800)),Text(p.university,style:const TextStyle(color:AppColors.muted)),const SizedBox(height:8),LinearProgressIndicator(value:p.progress/100,color:AppColors.admin),Text('${p.progress}%')])),const SizedBox(height:12),RoleButton(label:'View All Projects',color:AppColors.admin,onTap:()=>ScaffoldMessenger.of(c).showSnackBar(const SnackBar(content:Text('Showing all local projects'))))]));}}
+import 'package:flutter/material.dart';
+import '../../../core/routes/app_routes.dart';
+import '../../../models/challenge_model.dart';
+import '../../../shared/mock_data/app_store.dart';
+import '../../../shared/widgets/ui.dart';
+import '../../../theme/app_colors.dart';
+
+class AdminDashboard extends StatelessWidget {
+  const AdminDashboard({super.key});
+  @override
+  Widget build(BuildContext c) {
+    final s = StoreScope.of(c);
+    return PageFrame(
+      title: 'Admin Dashboard',
+      color: AppColors.admin,
+      actions: [
+        IconButton(
+          onPressed: () => Navigator.pushNamed(c, Routes.roleSelection),
+          icon: const Icon(Icons.logout_outlined),
+        ),
+      ],
+      child: ListView(
+        padding: const EdgeInsets.all(18),
+        children: [
+          Row(
+            children: [
+              Stat(
+                '${s.challenges.length + 1244}',
+                'Total Challenges',
+                AppColors.admin,
+              ),
+              const SizedBox(width: 8),
+              const Stat('120', 'Universities', AppColors.admin),
+              const SizedBox(width: 8),
+              const Stat('320', 'Industries', AppColors.admin),
+            ],
+          ),
+          section('Challenge status'),
+          AppCard(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _chart('Under Review', .25, AppColors.warning),
+                _chart('Assigned', .45, AppColors.admin),
+                _chart('Resolved', .7, AppColors.success),
+              ],
+            ),
+          ),
+          section('Recent challenges'),
+          ...s.challenges.map(
+            (x) => AppCard(
+              onTap: () => Navigator.pushNamed(c, Routes.review, arguments: x),
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  x.title,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: Text(x.location),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 15),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          RoleButton(
+            label: 'Analytics Dashboard',
+            color: AppColors.admin,
+            onTap: () => Navigator.pushNamed(c, Routes.analytics),
+            icon: Icons.analytics,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chart(String x, double h, Color c) => Column(
+    children: [
+      Container(
+        width: 38,
+        height: 88 * h,
+        decoration: BoxDecoration(
+          color: c,
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text(x, style: const TextStyle(fontSize: 10)),
+    ],
+  );
+}
+
+class ChallengeReview extends StatefulWidget {
+  const ChallengeReview({super.key, required this.x});
+  final Challenge x;
+  @override
+  State<ChallengeReview> createState() => _ChallengeReviewState();
+}
+
+class _ChallengeReviewState extends State<ChallengeReview> {
+  String uni = 'BIT Mesra';
+  @override
+  Widget build(BuildContext c) => PageFrame(
+    title: 'Assign to University',
+    color: AppColors.admin,
+    child: ListView(
+      padding: const EdgeInsets.all(18),
+      children: [
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.x.id,
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                widget.x.title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text('Submitted by ${widget.x.submittedBy}'),
+              Text(widget.x.location),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        DropdownButtonFormField(
+          initialValue: uni,
+          items: [
+            'BIT Mesra',
+            'Ranchi University',
+            'IIT ISM',
+          ].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(),
+          onChanged: (x) => setState(() => uni = x!),
+          decoration: const InputDecoration(labelText: 'Select university'),
+        ),
+        const SizedBox(height: 22),
+        RoleButton(
+          label: 'Assign Challenge',
+          color: AppColors.admin,
+          onTap: () {
+            StoreScope.of(c).assign(widget.x, uni);
+            ScaffoldMessenger.of(c).showSnackBar(
+              SnackBar(content: Text('Challenge assigned to $uni')),
+            );
+            Navigator.pop(c);
+          },
+        ),
+      ],
+    ),
+  );
+}
+
+class AnalyticsView extends StatelessWidget {
+  const AnalyticsView({super.key});
+  @override
+  Widget build(BuildContext c) => PageFrame(
+    title: 'Analytics Dashboard',
+    color: AppColors.admin,
+    child: ListView(
+      padding: const EdgeInsets.all(18),
+      children: [
+        section('Challenges over time'),
+        AppCard(
+          child: SizedBox(
+            height: 170,
+            child: CustomPaint(painter: _LinePainter()),
+          ),
+        ),
+        section('Top categories'),
+        AppCard(
+          child: Column(
+            children: [
+              _row('Water Management', .62, AppColors.admin),
+              _row('Agriculture', .42, AppColors.citizen),
+              _row('Healthcare', .28, AppColors.industry),
+            ],
+          ),
+        ),
+        section('Status summary'),
+        AppCard(
+          child: const Wrap(
+            spacing: 12,
+            children: [
+              StatusPill('In Progress'),
+              StatusPill('Under Review'),
+              StatusPill('Assigned'),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+  Widget _row(String x, double v, Color c) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: Row(
+      children: [
+        SizedBox(width: 130, child: Text(x)),
+        Expanded(
+          child: LinearProgressIndicator(value: v, color: c),
+        ),
+        const SizedBox(width: 8),
+        Text('${(v * 100).round()}%'),
+      ],
+    ),
+  );
+}
+
+class _LinePainter extends CustomPainter {
+  @override
+  void paint(Canvas c, Size s) {
+    final p = Paint()
+      ..color = AppColors.admin
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke;
+    final path = Path()
+      ..moveTo(4, s.height * .75)
+      ..lineTo(s.width * .18, s.height * .55)
+      ..lineTo(s.width * .35, s.height * .68)
+      ..lineTo(s.width * .52, s.height * .35)
+      ..lineTo(s.width * .7, s.height * .48)
+      ..lineTo(s.width - 4, s.height * .16);
+    c.drawPath(path, p);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
+class ProjectMonitoring extends StatelessWidget {
+  const ProjectMonitoring({super.key});
+  @override
+  Widget build(BuildContext c) {
+    final s = StoreScope.of(c);
+    return PageFrame(
+      title: 'Project Monitoring',
+      color: AppColors.admin,
+      child: ListView(
+        padding: const EdgeInsets.all(18),
+        children: [
+          for (final p in s.projects)
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    p.name,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  Text(
+                    p.university,
+                    style: const TextStyle(color: AppColors.muted),
+                  ),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                    value: p.progress / 100,
+                    color: AppColors.admin,
+                  ),
+                  Text('${p.progress}%'),
+                ],
+              ),
+            ),
+          const SizedBox(height: 12),
+          RoleButton(
+            label: 'View All Projects',
+            color: AppColors.admin,
+            onTap: () => ScaffoldMessenger.of(c).showSnackBar(
+              const SnackBar(content: Text('Showing all local projects')),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

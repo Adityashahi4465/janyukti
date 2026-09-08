@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../models/project_model.dart';
 import '../../../shared/mock_data/app_store.dart';
 import '../../../shared/widgets/ui.dart';
+import '../../../theme/app_colors.dart';
 
 class IndustryDashboard extends StatelessWidget {
   const IndustryDashboard({super.key});
@@ -13,12 +13,18 @@ class IndustryDashboard extends StatelessWidget {
     return PageFrame(
       title: 'Industry Dashboard',
       color: AppColors.industry,
+      actions: [
+        IconButton(
+          onPressed: () => Navigator.pushNamed(c, Routes.roleSelection),
+          icon: const Icon(Icons.logout_outlined),
+        ),
+      ],
       child: ListView(
         padding: const EdgeInsets.all(18),
         children: [
           Row(
             children: [
-              const Stat('15', 'Opportunities', AppColors.industry),
+              Stat('${s.projects.length}', 'Opportunities', AppColors.industry),
               const SizedBox(width: 8),
               const Stat('3', 'Collaborations', AppColors.industry),
             ],

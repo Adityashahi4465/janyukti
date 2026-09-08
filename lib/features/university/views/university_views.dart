@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../models/challenge_model.dart';
 import '../../../models/project_model.dart';
 import '../../../shared/mock_data/app_store.dart';
 import '../../../shared/widgets/ui.dart';
+import '../../../theme/app_colors.dart';
 
 class UniversityDashboard extends StatelessWidget {
   const UniversityDashboard({super.key});
@@ -14,14 +14,28 @@ class UniversityDashboard extends StatelessWidget {
     return PageFrame(
       title: 'University Dashboard',
       color: AppColors.university,
+      actions: [
+        IconButton(
+          onPressed: () => Navigator.pushNamed(c, Routes.roleSelection),
+          icon: const Icon(Icons.logout_outlined),
+        ),
+      ],
       child: ListView(
         padding: const EdgeInsets.all(18),
         children: [
           Row(
             children: [
-              const Stat('12', 'Challenges Assigned', AppColors.university),
+              Stat(
+                '${s.challenges.length}',
+                'Challenges Assigned',
+                AppColors.university,
+              ),
               const SizedBox(width: 8),
-              const Stat('8', 'Projects in Progress', AppColors.university),
+              Stat(
+                '${s.projects.length}',
+                'Projects in Progress',
+                AppColors.university,
+              ),
             ],
           ),
           section('Quick actions'),

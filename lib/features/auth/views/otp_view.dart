@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../shared/widgets/ui.dart';
+import '../../../theme/app_colors.dart';
 
 class OtpView extends StatelessWidget {
   const OtpView({super.key});

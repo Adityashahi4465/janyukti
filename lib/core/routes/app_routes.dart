@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../features/auth/views/otp_view.dart';
+import '../../features/auth/views/role_selection_screen.dart';
+import '../../features/auth/views/welcome_view.dart';
+import '../../features/citizen/views/add_details_view.dart';
+import '../../features/citizen/views/citizen_dashboard.dart'
+    show CitizenDashboard;
+import '../../features/citizen/views/submit_challange_view.dart';
+import '../../features/citizen/views/submit_success_screen.dart';
 import '../../features/citizen/views/trach_challange_view.dart';
 import '../../features/university/views/university_views.dart';
 import '../../features/industry/views/industry_views.dart';
@@ -9,6 +16,7 @@ import '../../models/project_model.dart';
 
 class Routes {
   static const welcome = '/',
+      roleSelection = '/roles',
       login = '/login',
       otp = '/otp',
       citizen = '/citizen',
@@ -40,7 +48,8 @@ class AppRoutes {
         page = const WelcomeView();
         break;
       case Routes.login:
-        page = const LoginView();
+      case Routes.roleSelection:
+        page = const RoleSelectionScreen();
         break;
       case Routes.otp:
         page = const OtpView();

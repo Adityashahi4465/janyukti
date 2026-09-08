@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/app_colors.dart';
 import '../../../models/challenge_model.dart';
 import '../../../shared/widgets/ui.dart';
+import '../../../theme/app_colors.dart';
 
 class ChallengeCard extends StatelessWidget {
   const ChallengeCard(this.x, {super.key, this.onTap});

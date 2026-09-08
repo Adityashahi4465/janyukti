@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart' show Routes;
 import '../../../shared/widgets/ui.dart' show RoleButton, PageFrame;
+import '../../../theme/app_colors.dart';
 
 class SubmitChallengeView extends StatefulWidget {
   const SubmitChallengeView({super.key});
