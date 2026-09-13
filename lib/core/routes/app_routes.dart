@@ -11,7 +11,6 @@ import 'package:flutter/material.dart';
 import '../../features/auth/views/otp_view.dart';
 import '../../features/auth/views/role_selection_screen.dart';
 import '../../features/auth/views/welcome_view.dart';
-import '../../features/citizen/views/add_details_view.dart';
 import '../../features/citizen/views/citizen_dashboard.dart'
     show CitizenDashboard;
 import '../../features/citizen/views/submit_challange_view.dart';
@@ -86,9 +85,6 @@ class AppRoutes {
         break;
       case Routes.submit:
         page = const SubmitChallengeView();
-        break;
-      case Routes.details:
-        page = AddDetailsView(draft: a as List<String>);
         break;
       case Routes.success:
         page = SubmissionSuccess(challenge: a as Challenge);

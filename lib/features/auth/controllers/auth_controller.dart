@@ -1,3 +1,4 @@
+import '../providers/user_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -9,7 +10,10 @@ import '../../../models/user_role.dart';
 
 final authControllerProvider =
     ChangeNotifierProvider.autoDispose<AuthController>(
-      (ref) => AuthController(),
+      (ref) => AuthController(
+        api: ref.watch(authApiProvider),
+        session: ref.read(userSessionProvider),
+      ),
     );
 
 String authErrorMessage(Object error) {
@@ -46,7 +50,10 @@ String authErrorMessage(Object error) {
 }
 
 class AuthController extends ChangeNotifier {
-  AuthController({AuthApi? api}) : _api = api ?? AuthApi();
+  AuthController({AuthApi? api, UserSession? session})
+    : _api = api ?? AuthApi(),
+      _session = session;
+  final UserSession? _session;
   final AuthApi _api;
   bool isLoading = false, _disposed = false;
   String? errorMessage;
@@ -92,8 +99,10 @@ class AuthController extends ChangeNotifier {
     await _api.login(email: email, password: password);
     try {
       final profile = await _api.requireProfile(role);
+      _session?.setUser(profile);
       if (context.mounted) routeProfile(context, profile);
     } catch (_) {
+      _session?.clear();
       await _api.logout();
       rethrow;
     }
@@ -106,6 +115,7 @@ class AuthController extends ChangeNotifier {
           UserRole.university ||
           UserRole.industry => _api.registerOrganization(data),
         };
+        _session?.setUser(profile);
         if (context.mounted) routeProfile(context, profile);
       });
   Future<void> sendPasswordReset(String email) async {
@@ -120,6 +130,7 @@ class AuthController extends ChangeNotifier {
 
   Future<void> logout(BuildContext context) => _run(() async {
     await _api.logout();
+    _session?.clear();
     if (context.mounted) {
       Navigator.pushNamedAndRemoveUntil(
         context,

@@ -1,3 +1,4 @@
+import 'package:janyukti/features/auth/providers/user_provider.dart';
 import 'package:janyukti/features/auth/views/session_gate.dart';
 import 'package:janyukti/core/localization/app_localizations.dart';
 import 'dart:async';
@@ -62,10 +63,53 @@ class SessionApi extends FakeApi {
 }
 
 class FakeUser implements User {
+  FakeUser([this.uid = 'test']);
   @override
-  String get uid => 'test';
+  final String uid;
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class PersistentSessionApi extends FakeApi {
+  User? account = FakeUser();
+  final changes = StreamController<User?>.broadcast();
+  final documents = <String, StreamController<UserModel?>>{};
+  int watches = 0;
+  @override
+  User? get currentUser => account;
+  @override
+  Stream<User?> authChanges() async* {
+    yield account;
+    yield* changes.stream;
+  }
+
+  @override
+  Stream<UserModel?> watchUserProfile(String uid) {
+    watches++;
+    return document(uid).stream;
+  }
+
+  StreamController<UserModel?> document(String uid) => documents.putIfAbsent(
+    uid,
+    () => StreamController<UserModel?>.broadcast(),
+  );
+  void switchAccount(User? value) {
+    account = value;
+    changes.add(value);
+  }
+
+  @override
+  Future<void> logout() async {
+    signedOut = true;
+    switchAccount(null);
+  }
+
+  Future<void> close() async {
+    await changes.close();
+    for (final stream in documents.values) {
+      await stream.close();
+    }
+  }
 }
 
 class FakeCredential implements UserCredential {
@@ -233,6 +277,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          authApiProvider.overrideWithValue(api),
           authControllerProvider.overrideWith(
             (ref) => AuthController(api: api),
           ),
@@ -241,7 +286,6 @@ void main() {
           controller: LanguageController(),
           child: MaterialApp(
             home: SessionGate(
-              api: api,
               requiredRole: UserRole.admin,
               child: const Text('Protected dashboard'),
             ),
@@ -268,11 +312,13 @@ void main() {
       final api = SessionApi();
       addTearDown(api.profiles.close);
       await tester.pumpWidget(
-        MaterialApp(
-          home: SessionGate(
-            api: api,
-            requiredRole: UserRole.admin,
-            child: const Text('Protected dashboard'),
+        ProviderScope(
+          overrides: [authApiProvider.overrideWithValue(api)],
+          child: MaterialApp(
+            home: SessionGate(
+              requiredRole: UserRole.admin,
+              child: const Text('Protected dashboard'),
+            ),
           ),
         ),
       );
@@ -297,14 +343,13 @@ void main() {
     final api = SessionApi();
     addTearDown(api.profiles.close);
     await tester.pumpWidget(
-      MaterialApp(
-        home: SessionGate(
-          api: api,
-          restore: true,
-          child: const Text('Welcome'),
+      ProviderScope(
+        overrides: [authApiProvider.overrideWithValue(api)],
+        child: MaterialApp(
+          home: SessionGate(restore: true, child: const Text('Welcome')),
+          onGenerateRoute: (s) =>
+              MaterialPageRoute(builder: (_) => Text(s.name!)),
         ),
-        onGenerateRoute: (s) =>
-            MaterialPageRoute(builder: (_) => Text(s.name!)),
       ),
     );
     await tester.pump();
@@ -314,6 +359,144 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(Routes.admin), findsOneWidget);
   });
+  test(
+    'user provider survives listener removal, tracks updates and clears on account switch/logout',
+    () async {
+      final api = PersistentSessionApi();
+      final container = ProviderContainer(
+        overrides: [authApiProvider.overrideWithValue(api)],
+      );
+      addTearDown(api.close);
+      addTearDown(container.dispose);
+      final subscription = container.listen(currentUserProvider, (_, _) {});
+      await Future<void>.delayed(Duration.zero);
+      const user = UserModel(
+        uid: 'test',
+        role: UserRole.citizen,
+        fullName: 'Asha',
+        status: 'active',
+      );
+      api.document('test').add(user);
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(currentUserProvider)?.fullName, 'Asha');
+      subscription.close();
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(currentUserProvider), user);
+      expect(api.watches, 1);
+      api.document('test').add(user.copyWith(status: 'suspended'));
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(currentUserProvider)?.status, 'suspended');
+      api.switchAccount(FakeUser('other'));
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(currentUserProvider), isNull);
+      api.document('test').add(user);
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(currentUserProvider), isNull);
+      api
+          .document('other')
+          .add(
+            const UserModel(
+              uid: 'other',
+              role: UserRole.admin,
+              status: 'pending',
+            ),
+          );
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(currentUserProvider)?.uid, 'other');
+      await api.logout();
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(currentUserProvider), isNull);
+      expect(container.read(userSessionProvider).isSignedIn, isFalse);
+    },
+  );
+  test(
+    'new provider scope restores Firebase session and waits for fresh profile',
+    () async {
+      final api = PersistentSessionApi();
+      addTearDown(api.close);
+      final first = ProviderContainer(
+        overrides: [authApiProvider.overrideWithValue(api)],
+      );
+      first.read(userSessionProvider);
+      await Future<void>.delayed(Duration.zero);
+      api
+          .document('test')
+          .add(
+            const UserModel(
+              uid: 'test',
+              role: UserRole.citizen,
+              status: 'active',
+            ),
+          );
+      await Future<void>.delayed(Duration.zero);
+      expect(first.read(currentUserProvider)?.isActive, isTrue);
+      first.dispose();
+      final restored = ProviderContainer(
+        overrides: [authApiProvider.overrideWithValue(api)],
+      );
+      addTearDown(restored.dispose);
+      expect(restored.read(currentUserProvider), isNull);
+      await Future<void>.delayed(Duration.zero);
+      api
+          .document('test')
+          .add(
+            const UserModel(
+              uid: 'test',
+              role: UserRole.citizen,
+              status: 'suspended',
+            ),
+          );
+      await Future<void>.delayed(Duration.zero);
+      expect(restored.read(currentUserProvider)?.status, 'suspended');
+      api.document('test').addError(StateError('Connection failed'));
+      await Future<void>.delayed(Duration.zero);
+      expect(restored.read(currentUserProvider), isNull);
+      expect(restored.read(userSessionProvider).state.hasError, isTrue);
+    },
+  );
+  testWidgets(
+    'login stores fetched profile and logout clears the shared provider',
+    (tester) async {
+      final api = PersistentSessionApi();
+      addTearDown(api.close);
+      final container = ProviderContainer(
+        overrides: [authApiProvider.overrideWithValue(api)],
+      );
+      addTearDown(container.dispose);
+      final session = container.read(userSessionProvider);
+      final controller = AuthController(api: api, session: session);
+      addTearDown(controller.dispose);
+      late BuildContext context;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (c) {
+              context = c;
+              return const SizedBox();
+            },
+          ),
+          onGenerateRoute: (s) => MaterialPageRoute(
+            builder: (c) {
+              context = c;
+              return Text(s.name!);
+            },
+          ),
+        ),
+      );
+      await controller.loginWithEmail(
+        context,
+        UserRole.citizen,
+        'test@example.com',
+        'password',
+      );
+      await tester.pumpAndSettle();
+      expect(container.read(currentUserProvider), api.profile);
+      await controller.logout(context);
+      await tester.pumpAndSettle();
+      expect(container.read(currentUserProvider), isNull);
+      expect(find.text(Routes.roleSelection), findsOneWidget);
+    },
+  );
   for (final role in UserRole.values) {
     testWidgets(
       '${role.name} registration fits a small phone and exposes submit action',

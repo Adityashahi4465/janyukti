@@ -1,3 +1,5 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../auth/providers/user_provider.dart';
 import 'package:flutter/material.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../shared/mock_data/app_store.dart';
@@ -6,11 +8,12 @@ import '../../../theme/app_colors.dart';
 import '../widgets/challange_card.dart';
 import '../../auth/services/auth_session.dart';
 
-class CitizenDashboard extends StatelessWidget {
+class CitizenDashboard extends ConsumerWidget {
   const CitizenDashboard({super.key});
   @override
-  Widget build(BuildContext c) {
+  Widget build(BuildContext c, WidgetRef ref) {
     final s = StoreScope.of(c);
+    final user = ref.watch(currentUserProvider);
     return PageFrame(
       title: 'janYukti',
       color: AppColors.citizen,
@@ -25,9 +28,9 @@ class CitizenDashboard extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(18),
         children: [
-          const Text(
-            'Hello, Tishika 👋',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+          Text(
+            'Hello${user == null || user.fullName.isEmpty ? '' : ', ${user.fullName}'} 👋',
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
           ),
           const Text(
             'What would you like to do?',

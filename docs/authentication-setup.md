@@ -160,3 +160,24 @@ Flutter tests exercise registration validation, all four roles across all status
 - `lib/core/icons/icons.dart`, `lib/core/utils/color_utility.dart`, `lib/theme/app_colors.dart`, `lib/features/citizen/views/add_details_view.dart`, `trach_challange_view.dart` — existing analyzer warnings cleaned up.
 - `firestore.rules`, `firebase.json` — authorization and deployment configuration.
 - `pubspec.yaml`, `pubspec.lock`, `ios/Podfile.lock`, generated platform plugin registrants — unused Supabase dependency removed and dependencies synchronized; existing Flutter-compatible Firebase pins retained.
+
+## Shared user state
+
+`lib/features/auth/providers/user_provider.dart` now owns the session's user profile. `userSessionProvider` stays alive for the app's `ProviderScope`; navigation does not discard it. Login saves the role-validated Firestore profile before routing, and registration seeds the same provider after creating the profile. A single Firestore subscription keeps every consumer updated. Logout clears the profile, and switching users cancels the previous user's subscription.
+
+Use the current profile in a `ConsumerWidget` or `ConsumerState`:
+
+```dart
+final user = ref.watch(currentUserProvider);
+Text(user?.fullName ?? '');
+```
+
+For loading/error information or an explicit reload:
+
+```dart
+final session = ref.watch(userSessionProvider);
+final profileState = session.state; // AsyncValue<UserModel?>
+ref.read(userSessionProvider).refresh();
+```
+
+The citizen greeting and protected route/status checks consume this shared state. Firebase retains the authentication session across app restarts; the provider reloads `users/{uid}` after Firebase restores that session. The in-memory Riverpod object is recreated on restart, and no local approval/role cache grants dashboard access while awaiting server verification. Phone-auth behavior has not been changed by this provider update.

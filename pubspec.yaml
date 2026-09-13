@@ -41,6 +41,13 @@ dependencies:
   firebase_core: 4.13.0
   firebase_auth: 6.5.6
   cloud_firestore: 6.8.0
+  image_picker: ^1.2.2
+  geolocator: ^14.0.2
+  geocoding: ^5.0.0
+  stt_record: ^0.0.8
+  audioplayers: ^6.7.1
+  path_provider: ^2.1.5
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:

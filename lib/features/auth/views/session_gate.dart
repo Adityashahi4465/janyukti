@@ -1,94 +1,73 @@
 import 'package:flutter/material.dart';
-import '../../../apis/auth_api.dart';
-import '../../../models/user_model.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../models/user_role.dart';
 import '../controllers/auth_controller.dart';
+import '../providers/user_provider.dart';
 import '../services/auth_session.dart';
 import 'pending_approval_screen.dart';
 import 'welcome_view.dart';
 
-/// Rechecks the server profile on protected routes and reacts to revocation.
-class SessionGate extends StatefulWidget {
+/// All routes share the same persisted Firebase session and live user provider.
+class SessionGate extends ConsumerStatefulWidget {
   const SessionGate({
     super.key,
     required this.child,
     this.requiredRole,
     this.restore = false,
     this.statusPage = false,
-    this.api,
   });
-  final AuthApi? api;
   final Widget child;
   final UserRole? requiredRole;
   final bool restore, statusPage;
   @override
-  State<SessionGate> createState() => _SessionGateState();
+  ConsumerState<SessionGate> createState() => _SessionGateState();
 }
 
-class _SessionGateState extends State<SessionGate> {
-  late final api = widget.api ?? AuthApi();
-  late final bool restoreSession = widget.restore && api.currentUser != null;
-  late final authStream = api.authChanges();
-  Stream<UserModel?>? profileStream;
-  String? profileUid, scheduledRoute;
+class _SessionGateState extends ConsumerState<SessionGate> {
+  String? scheduledRoute;
+  late final bool restoreSession =
+      widget.restore && ref.read(authApiProvider).currentUser != null;
   void redirect(UserRole role) {
     final route = AuthController.dashboardRoute(role);
     if (scheduledRoute == route) return;
     scheduledRoute = route;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (!mounted) return;
+      final current = ref.read(currentUserProvider);
+      if (mounted && current?.isActive == true && current?.role == role) {
         Navigator.pushNamedAndRemoveUntil(context, route, (_) => false);
+      } else {
+        scheduledRoute = null;
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final session = ref.watch(userSessionProvider);
+    // A signed-out welcome page must not navigate while registration is writing
+    // its profile. Login/registration controllers handle that transition.
     if (widget.restore && !restoreSession) return widget.child;
-    return StreamBuilder(
-      stream: authStream,
-      builder: (context, auth) {
-        if (auth.connectionState == ConnectionState.waiting) return loading;
-        if (auth.hasError) {
-          return error('Unable to restore your session. Please sign in again.');
+    return session.state.when(
+      loading: () => loading,
+      error: (failure, _) => error(authErrorMessage(failure)),
+      data: (profile) {
+        if (!session.isSignedIn) return const WelcomeView();
+        if (profile == null) {
+          return error(
+            'Unable to verify your account profile. Check your connection or contact the janYukti administrator.',
+          );
         }
-        final user = auth.data;
-        if (user == null) return const WelcomeView();
-        if (profileUid != user.uid) {
-          profileUid = user.uid;
-          profileStream = api.watchUserProfile(user.uid);
+        if (widget.requiredRole != null &&
+            profile.role != widget.requiredRole) {
+          return error('This account does not belong to the selected portal.');
         }
-        return StreamBuilder<UserModel?>(
-          stream: profileStream,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return loading;
-            }
-            if (snapshot.hasError) {
-              return error(authErrorMessage(snapshot.error!));
-            }
-            final profile = snapshot.data;
-            if (profile == null) {
-              return error(
-                'Unable to verify your account profile. Check your connection or contact the janYukti administrator.',
-              );
-            }
-            if (widget.requiredRole != null &&
-                profile.role != widget.requiredRole) {
-              return error(
-                'This account does not belong to the selected portal.',
-              );
-            }
-            if (!profile.isActive) {
-              return PendingApprovalScreen(profile: profile);
-            }
-            if (widget.restore || widget.statusPage) {
-              redirect(profile.role);
-              return loading;
-            }
-            return widget.child;
-          },
-        );
+        if (!profile.isActive) return PendingApprovalScreen(profile: profile);
+        if (widget.restore || widget.statusPage) {
+          redirect(profile.role);
+          return loading;
+        }
+        return widget.child;
       },
     );
   }
@@ -105,9 +84,7 @@ class _SessionGateState extends State<SessionGate> {
             children: [
               Text(message),
               TextButton(
-                onPressed: () => setState(() {
-                  profileUid = null;
-                }),
+                onPressed: () => ref.read(userSessionProvider).refresh(),
                 child: const Text('Retry'),
               ),
               TextButton(
