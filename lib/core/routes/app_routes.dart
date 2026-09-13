@@ -90,7 +90,7 @@ class AppRoutes {
         page = SubmissionSuccess(challenge: a as Challenge);
         break;
       case Routes.track:
-        page = TrackChallengeView(x: a as Challenge);
+        page = TrackChallengeView(challengeId: a as String);
         break;
       case Routes.university:
         page = const UniversityDashboard();

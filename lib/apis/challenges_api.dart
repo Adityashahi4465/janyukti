@@ -147,6 +147,25 @@ class ChallengesApi {
         );
   }
 
+  Stream<Challenge?> watchChallenge(String challengeId) {
+    if (challengeId.trim().isEmpty) {
+      throw Exception('Challenge ID is required');
+    }
+
+    return _challenges.doc(challengeId).snapshots().map((snapshot) {
+      if (!snapshot.exists) {
+        return null;
+      }
+
+      final data = snapshot.data();
+
+      if (data == null) {
+        return null;
+      }
+
+      return Challenge.fromMap(id: snapshot.id, map: data);
+    });
+  }
   // ============================================================
   // WATCH CURRENT USER
   // ============================================================
@@ -156,13 +175,17 @@ class ChallengesApi {
 
     return _challenges
         .where('submittedById', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
+        .map((snapshot) {
+          final challenges = snapshot.docs
               .map((doc) => Challenge.fromMap(id: doc.id, map: doc.data()))
-              .toList(),
-        );
+              .toList();
+
+          // Sort newest first locally.
+          challenges.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+          return challenges;
+        });
   }
 
   // ============================================================

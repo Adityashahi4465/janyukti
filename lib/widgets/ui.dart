@@ -87,7 +87,6 @@ class AppCard extends StatelessWidget {
   final VoidCallback? onTap;
   @override
   Widget build(BuildContext c) => Container(
-    margin: AppDimensions.padding6,
     decoration: BoxDecoration(
       color: AppColors.body,
       borderRadius: BorderRadius.circular(14),
@@ -183,43 +182,70 @@ class Timeline extends StatelessWidget {
     required this.active,
     required this.color,
   });
+
   final List<String> items;
   final int active;
   final Color color;
+
   @override
-  Widget build(BuildContext c) => Column(
-    children: List.generate(
-      items.length,
-      (i) => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Column(
-            children: [
-              Icon(
-                i <= active ? Icons.check_circle : Icons.radio_button_unchecked,
-                color: i <= active ? color : AppColors.line,
-                size: 20,
-              ),
-              if (i < items.length - 1)
-                Container(
-                  width: 2,
-                  height: 28,
-                  color: i < active ? color : AppColors.line,
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(items.length, (index) {
+        final completed = index < active;
+
+        final current = index == active;
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Column(
+              children: [
+                Icon(
+                  completed
+                      ? Icons.check_circle_rounded
+                      : current
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                  color: index <= active ? color : AppColors.line,
+                  size: 22,
                 ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Text(
-              items[i],
-              style: TextStyle(
-                fontWeight: i <= active ? FontWeight.w700 : FontWeight.w400,
+
+                if (index < items.length - 1)
+                  Container(
+                    width: 2,
+                    height: 38,
+                    color: index < active ? color : AppColors.line,
+                  ),
+              ],
+            ),
+
+            const SizedBox(width: 12),
+
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    items[index],
+                    style: TextStyle(
+                      fontWeight: index <= active
+                          ? FontWeight.w700
+                          : FontWeight.w400,
+                    ),
+                  ),
+
+                  if (current)
+                    Text(
+                      'Current stage',
+                      style: TextStyle(color: color, fontSize: 11),
+                    ),
+                ],
               ),
             ),
-          ),
-        ],
-      ),
-    ),
-  );
+          ],
+        );
+      }),
+    );
+  }
 }

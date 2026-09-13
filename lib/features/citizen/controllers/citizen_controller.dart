@@ -43,6 +43,12 @@ final myChallengesProvider = StreamProvider.autoDispose<List<Challenge>>((ref) {
   return api.watchMyChallenges();
 });
 
+final challengeStreamProvider = StreamProvider.autoDispose
+    .family<Challenge?, String>((ref, challengeId) {
+      final api = ref.watch(challengesApiProvider);
+
+      return api.watchChallenge(challengeId);
+    });
 // ============================================================
 // GET ALL CHALLENGES
 //
@@ -282,7 +288,7 @@ class ChallengeController extends StateNotifier<AsyncValue<Challenge?>> {
 
         voiceNotes: voiceNotes,
 
-        status: 'In Progress',
+        status: 'Under Review',
 
         priority: 'Medium',
 
