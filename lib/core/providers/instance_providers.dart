@@ -13,9 +13,15 @@ final firebaseAuthProvider = Provider<FirebaseAuth>((ref) {
 });
 
 final cloudinaryServiceProvider = Provider<CloudinaryService>((ref) {
-  const cloudName = String.fromEnvironment('dpnawkd7i');
+  const cloudName = String.fromEnvironment(
+    'CLOUDINARY_CLOUD_NAME',
+    defaultValue: 'dpnawkd7i',
+  );
 
-  const uploadPreset = String.fromEnvironment('pzr05f28');
+  const uploadPreset = String.fromEnvironment(
+    'CLOUDINARY_UPLOAD_PRESET',
+    defaultValue: 'pzr05f28',
+  );
 
   if (cloudName.isEmpty || uploadPreset.isEmpty) {
     throw Exception(
