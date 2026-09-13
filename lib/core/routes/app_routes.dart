@@ -1,3 +1,12 @@
+import '../../features/admin/views/analytics_view.dart';
+import '../../features/admin/views/challange_review.dart';
+import '../../features/admin/views/project_monitoring.dart';
+import '../../features/auth/views/registration_screen.dart';
+import '../../features/auth/views/session_gate.dart';
+import '../../features/admin/views/registration_approvals_view.dart';
+import '../../features/admin/views/registration_details_view.dart';
+import '../../models/user_role.dart';
+import '../../models/user_model.dart';
 import 'package:flutter/material.dart';
 import '../../features/auth/views/otp_view.dart';
 import '../../features/auth/views/role_selection_screen.dart';
@@ -19,6 +28,10 @@ class Routes {
       roleSelection = '/roles',
       login = '/login',
       otp = '/otp',
+      registration = '/register',
+      pending = '/account-status',
+      approvals = '/admin/approvals',
+      registrationDetails = '/admin/registration',
       citizen = '/citizen',
       submit = '/submit',
       details = '/details',
@@ -45,11 +58,25 @@ class AppRoutes {
     Widget page;
     switch (x.name) {
       case Routes.welcome:
-        page = const WelcomeView();
+        page = const SessionGate(restore: true, child: WelcomeView());
         break;
       case Routes.login:
       case Routes.roleSelection:
         page = const RoleSelectionScreen();
+        break;
+      case Routes.registration:
+        page = a is UserRole
+            ? RegistrationScreen(role: a)
+            : const RoleSelectionScreen();
+        break;
+      case Routes.pending:
+        page = const SessionGate(statusPage: true, child: SizedBox.shrink());
+        break;
+      case Routes.approvals:
+        page = const RegistrationApprovalsView();
+        break;
+      case Routes.registrationDetails:
+        page = RegistrationDetailsView(user: a as UserModel);
         break;
       case Routes.otp:
         page = const OtpView();
@@ -109,8 +136,34 @@ class AppRoutes {
         page = const ProjectMonitoring();
         break;
       default:
-        page = const WelcomeView();
+        page = const SessionGate(restore: true, child: WelcomeView());
     }
-    return MaterialPageRoute(settings: x, builder: (_) => page);
+    final requiredRole = switch (x.name) {
+      Routes.citizen ||
+      Routes.submit ||
+      Routes.details ||
+      Routes.success ||
+      Routes.track => UserRole.citizen,
+      Routes.university ||
+      Routes.challengeDetail ||
+      Routes.createProject ||
+      Routes.workspace => UserRole.university,
+      Routes.industry ||
+      Routes.projectDetail ||
+      Routes.interest ||
+      Routes.collaborations ||
+      Routes.chat => UserRole.industry,
+      Routes.admin ||
+      Routes.review ||
+      Routes.analytics ||
+      Routes.monitoring ||
+      Routes.approvals ||
+      Routes.registrationDetails => UserRole.admin,
+      _ => null,
+    };
+    final guardedPage = requiredRole == null
+        ? page
+        : SessionGate(requiredRole: requiredRole, child: page);
+    return MaterialPageRoute(settings: x, builder: (_) => guardedPage);
   }
 }

@@ -2,6 +2,17 @@ import 'package:flutter/material.dart';
 
 enum UserRole { citizen, university, industry, admin }
 
+extension UserRoleX on UserRole {
+  String get storageKey => name;
+  static UserRole? fromStorageKey(String? value) => switch (value) {
+    'citizen' => UserRole.citizen,
+    'university' => UserRole.university,
+    'industry' => UserRole.industry,
+    'admin' => UserRole.admin,
+    _ => null,
+  };
+}
+
 class RoleConfig {
   const RoleConfig({
     required this.title,
@@ -42,10 +53,10 @@ RoleConfig getRoleConfig(UserRole role) => switch (role) {
     icon: Icons.business_outlined,
   ),
   UserRole.admin => const RoleConfig(
-    title: 'Administrator',
-    subtitle: 'Manage the JanYukti ecosystem',
-    loginLabel: 'Secure Login',
-    emailLabel: 'Admin ID or Email',
+    title: 'Admin',
+    subtitle: 'Manage the janYukti ecosystem',
+    loginLabel: 'Login as Admin',
+    emailLabel: 'Email Address',
     primaryColor: Color(0xFF2563EB),
     icon: Icons.admin_panel_settings_outlined,
   ),

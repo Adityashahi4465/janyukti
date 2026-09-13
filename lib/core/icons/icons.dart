@@ -40,7 +40,9 @@
         iconData.path,
         height: size,
         width: size,
-        color: disabled ? Colors.grey : color,
+        colorFilter: disabled || color != null
+            ? ColorFilter.mode(disabled ? Colors.grey : color!, BlendMode.srcIn)
+            : null,
         placeholderBuilder: (context) => const CircularProgressIndicator(),
       );
 

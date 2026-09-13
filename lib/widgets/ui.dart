@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_colors.dart';
-import '../../theme/app_dimensions.dart';
-import '../../core/localization/app_localizations.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_dimensions.dart';
+import '../core/localization/app_localizations.dart';
 
 class RoleButton extends StatelessWidget {
   const RoleButton({
@@ -11,7 +11,9 @@ class RoleButton extends StatelessWidget {
     required this.color,
     required this.onTap,
     this.icon,
+    this.isLoading = false,
   });
+  final bool isLoading;
   final String label;
   final Color color;
   final VoidCallback onTap;
@@ -26,8 +28,14 @@ class RoleButton extends StatelessWidget {
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
-      onPressed: onTap,
-      icon: Icon(icon ?? Icons.arrow_forward, size: 18),
+      onPressed: isLoading ? null : onTap,
+      icon: isLoading
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(icon ?? Icons.arrow_forward, size: 18),
       label: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
     ),
   );
@@ -126,10 +134,19 @@ class Stat extends StatelessWidget {
   );
 }
 
-Widget section(String s) => Builder(builder: (context) => Padding(
-  padding: const EdgeInsets.only(top: 18, bottom: 6),
-  child: Text(tr(context, s), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink)),
-));
+Widget section(String s) => Builder(
+  builder: (context) => Padding(
+    padding: const EdgeInsets.only(top: 18, bottom: 6),
+    child: Text(
+      tr(context, s),
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w800,
+        color: AppColors.ink,
+      ),
+    ),
+  ),
+);
 
 class StatusPill extends StatelessWidget {
   const StatusPill(this.text, {super.key});
@@ -144,7 +161,7 @@ class StatusPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(.11),
+        color: color.withValues(alpha: .11),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(

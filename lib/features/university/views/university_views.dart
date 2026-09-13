@@ -3,8 +3,9 @@ import '../../../core/routes/app_routes.dart';
 import '../../../models/challenge_model.dart';
 import '../../../models/project_model.dart';
 import '../../../shared/mock_data/app_store.dart';
-import '../../../shared/widgets/ui.dart';
+import '../../../widgets/ui.dart';
 import '../../../theme/app_colors.dart';
+import '../../auth/services/auth_session.dart';
 
 class UniversityDashboard extends StatelessWidget {
   const UniversityDashboard({super.key});
@@ -16,7 +17,7 @@ class UniversityDashboard extends StatelessWidget {
       color: AppColors.university,
       actions: [
         IconButton(
-          onPressed: () => Navigator.pushNamed(c, Routes.roleSelection),
+          onPressed: () => AuthSession.signOut(c),
           icon: const Icon(Icons.logout_outlined),
         ),
       ],

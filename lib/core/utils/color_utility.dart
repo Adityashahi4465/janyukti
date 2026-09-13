@@ -34,7 +34,7 @@ Color determineProgressColor(double percentage) {
 }
 
 String convertColorToHex(Color color) {
-  return '#${color.value.toRadixString(16).padLeft(8, '0').substring(2)}';
+  return '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}';
 }
 
 Color getRandomColor() {

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../core/routes/app_routes.dart';
 import '../../../models/challenge_model.dart';
-import '../../../shared/mock_data/app_store.dart';
-import '../../../shared/widgets/ui.dart';
+import '../../../widgets/ui.dart';
 import '../../../theme/app_colors.dart';
 
 class TrackChallengeView extends StatelessWidget {

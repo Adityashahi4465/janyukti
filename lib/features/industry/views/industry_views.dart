@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../models/project_model.dart';
 import '../../../shared/mock_data/app_store.dart';
-import '../../../shared/widgets/ui.dart';
+import '../../../widgets/ui.dart';
 import '../../../theme/app_colors.dart';
+import '../../auth/services/auth_session.dart';
 
 class IndustryDashboard extends StatelessWidget {
   const IndustryDashboard({super.key});
@@ -15,7 +16,7 @@ class IndustryDashboard extends StatelessWidget {
       color: AppColors.industry,
       actions: [
         IconButton(
-          onPressed: () => Navigator.pushNamed(c, Routes.roleSelection),
+          onPressed: () => AuthSession.signOut(c),
           icon: const Icon(Icons.logout_outlined),
         ),
       ],

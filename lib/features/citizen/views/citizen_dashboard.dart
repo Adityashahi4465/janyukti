@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../core/routes/app_routes.dart';
-import '../../../models/challenge_model.dart';
 import '../../../shared/mock_data/app_store.dart';
-import '../../../shared/widgets/ui.dart';
+import '../../../widgets/ui.dart';
 import '../../../theme/app_colors.dart';
 import '../widgets/challange_card.dart';
+import '../../auth/services/auth_session.dart';
 
 class CitizenDashboard extends StatelessWidget {
   const CitizenDashboard({super.key});
@@ -12,13 +12,13 @@ class CitizenDashboard extends StatelessWidget {
   Widget build(BuildContext c) {
     final s = StoreScope.of(c);
     return PageFrame(
-      title: 'JanYukti',
+      title: 'janYukti',
       color: AppColors.citizen,
       actions: [
         const Icon(Icons.notifications_none),
         const SizedBox(width: 12),
         IconButton(
-          onPressed: () => Navigator.pushNamed(c, Routes.roleSelection),
+          onPressed: () => AuthSession.signOut(c),
           icon: const Icon(Icons.logout_outlined),
         ),
       ],

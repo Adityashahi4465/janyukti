@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../core/icons/icons.dart';
-import '../../theme/app_colors.dart';
-import '../../theme/app_dimensions.dart';
+import '../core/icons/icons.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_dimensions.dart';
 import 'loader.dart';
 
 class CustomPrimaryButton extends StatelessWidget {

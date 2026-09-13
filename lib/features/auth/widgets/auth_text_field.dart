@@ -11,7 +11,11 @@ class AuthTextField extends StatelessWidget {
     this.suffixIcon,
     this.onSuffixTap,
     this.enabled = true,
+    this.validator,
+    this.keyboardType,
   });
+  final FormFieldValidator<String>? validator;
+  final TextInputType? keyboardType;
   final String label, hintText;
   final TextEditingController controller;
   final IconData prefixIcon;
@@ -24,7 +28,9 @@ class AuthTextField extends StatelessWidget {
     children: [
       Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
       const SizedBox(height: 8),
-      TextField(
+      TextFormField(
+        validator: validator,
+        keyboardType: keyboardType,
         controller: controller,
         enabled: enabled,
         obscureText: obscureText,

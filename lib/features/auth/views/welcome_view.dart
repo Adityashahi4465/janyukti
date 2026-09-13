@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../shared/widgets/primery_button.dart';
+import '../../../widgets/primery_button.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../theme/app_colors.dart';
 

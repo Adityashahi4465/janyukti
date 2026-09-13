@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:janyukti/core/utils/color_utility.dart';
+import '../core/utils/color_utility.dart';
 
 /// All the colors used in the application are defined here
 /// Update the colors as desired with their dark mode variations below them.

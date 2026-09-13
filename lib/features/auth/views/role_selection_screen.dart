@@ -21,7 +21,7 @@ class RoleSelectionScreen extends StatelessWidget {
                 Center(child: Image.asset('assets/janyukti.png', height: 80)),
                 const SizedBox(height: 12),
                 Text(
-                  tr(c, 'Welcome to JanYukti'),
+                  tr(c, 'Welcome to janYukti'),
                   style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w900,
@@ -55,8 +55,9 @@ class RoleSelectionScreen extends StatelessWidget {
                         )
                         .toList(),
                     onChanged: (language) {
-                      if (language != null)
+                      if (language != null) {
                         LanguageScope.of(c).select(language);
+                      }
                     },
                   ),
                 ),

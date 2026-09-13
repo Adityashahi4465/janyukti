@@ -34,7 +34,7 @@ String languageName(AppLanguage language) => switch (language) {
 
 const _copy = <AppLanguage, Map<String, String>>{
   AppLanguage.hindi: {
-    'Welcome to JanYukti': 'JanYukti में आपका स्वागत है',
+    'Welcome to janYukti': 'janYukti में आपका स्वागत है',
     'Choose how you want to continue': 'आगे बढ़ने का तरीका चुनें',
     'Citizen': 'नागरिक',
     'University': 'विश्वविद्यालय',
@@ -43,7 +43,7 @@ const _copy = <AppLanguage, Map<String, String>>{
     'Report and track public issues': 'जनसमस्याओं की रिपोर्ट और ट्रैक करें',
     'Solve real-world challenges': 'वास्तविक चुनौतियों को हल करें',
     'Collaborate and provide solutions': 'सहयोग करें और समाधान दें',
-    'Manage the JanYukti ecosystem': 'JanYukti इकोसिस्टम प्रबंधित करें',
+    'Manage the janYukti ecosystem': 'janYukti इकोसिस्टम प्रबंधित करें',
     'Password': 'पासवर्ड',
     'Forgot Password?': 'पासवर्ड भूल गए?',
     'Choose another role': 'दूसरी भूमिका चुनें',
@@ -90,7 +90,7 @@ const _copy = <AppLanguage, Map<String, String>>{
     'Medium': 'मध्यम',
   },
   AppLanguage.nagpuri: {
-    'Welcome to JanYukti': 'JanYukti में राउर स्वागत हे',
+    'Welcome to janYukti': 'janYukti में राउर स्वागत हे',
     'Choose how you want to continue': 'आगे कइसन बढ़े के हे, चुनू',
     'Citizen': 'नागरिक',
     'University': 'विश्वविद्यालय',
@@ -99,7 +99,7 @@ const _copy = <AppLanguage, Map<String, String>>{
     'Report and track public issues': 'जन समस्या के रिपोर्ट आउर ट्रैक करू',
     'Solve real-world challenges': 'असल दुनिया के चुनौती सुलझाऊ',
     'Collaborate and provide solutions': 'मिल-जुल के समाधान देवू',
-    'Manage the JanYukti ecosystem': 'JanYukti व्यवस्था के संभालू',
+    'Manage the janYukti ecosystem': 'janYukti व्यवस्था के संभालू',
     'Password': 'पासवर्ड',
     'Forgot Password?': 'पासवर्ड भूला गेलें?',
     'Choose another role': 'दोसर भूमिका चुनू',

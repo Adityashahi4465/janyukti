@@ -37,8 +37,8 @@ class RoleCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(24),
 
-          splashColor: color.withOpacity(0.08),
-          highlightColor: color.withOpacity(0.03),
+          splashColor: color.withValues(alpha: 0.08),
+          highlightColor: color.withValues(alpha: 0.03),
 
           child: Container(
             padding: const EdgeInsets.all(18),
@@ -46,7 +46,7 @@ class RoleCard extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
 
-              border: Border.all(color: color.withOpacity(0.12)),
+              border: Border.all(color: color.withValues(alpha: 0.12)),
             ),
 
             child: Row(
@@ -57,7 +57,7 @@ class RoleCard extends StatelessWidget {
                   height: 58,
 
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.10),
+                    color: color.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(18),
                   ),
 
@@ -105,7 +105,7 @@ class RoleCard extends StatelessWidget {
                   height: 36,
 
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.08),
+                    color: color.withValues(alpha: 0.08),
                     shape: BoxShape.circle,
                   ),
 

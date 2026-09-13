@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/icons/icons.dart';
+import '../core/icons/icons.dart';
 
 class Loader extends StatefulWidget {
   final double size;
