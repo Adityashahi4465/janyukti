@@ -17,9 +17,7 @@ final challengesApiProvider = Provider<ChallengesApi>((ref) {
 });
 
 // ============================================================
-// CHALLENGES API
-// Pure Firebase / Firestore layer
-// No UI state providers here.
+// CHALLENGE API
 // ============================================================
 
 class ChallengesApi {
@@ -66,7 +64,7 @@ class ChallengesApi {
       return email;
     }
 
-    return 'Citizen';
+    return 'User';
   }
 
   // ============================================================
@@ -88,19 +86,51 @@ class ChallengesApi {
 
     final now = DateTime.now();
 
+    final submittedByName = challenge.submittedBy.trim().isNotEmpty
+        ? challenge.submittedBy.trim()
+        : currentUserName;
+
+    final initialStatus = challenge.status.trim().isEmpty
+        ? 'Submitted'
+        : challenge.status.trim();
+
+    final initialHistory = challenge.statusHistory.isEmpty
+        ? [
+            ChallengeStatusEvent(
+              status: initialStatus,
+              at: now,
+              updatedById: user.uid,
+              updatedByName: submittedByName,
+              note: 'Challenge submitted',
+            ),
+          ]
+        : challenge.statusHistory;
+
     final challengeToSave = challenge.copyWith(
       id: id,
+
+      status: initialStatus,
+
       submittedById: user.uid,
-      submittedBy: challenge.submittedBy.trim().isNotEmpty
-          ? challenge.submittedBy.trim()
-          : currentUserName,
+
+      submittedBy: submittedByName,
+
+      statusHistory: initialHistory,
+
+      lastUpdatedById: user.uid,
+
+      lastUpdatedByName: submittedByName,
+
       createdAt: now,
+
       updatedAt: now,
     );
 
     final data = challengeToSave.toMap();
 
+    // Server-authoritative top-level dates
     data['createdAt'] = FieldValue.serverTimestamp();
+
     data['updatedAt'] = FieldValue.serverTimestamp();
 
     await _challenges.doc(id).set(data);
@@ -133,19 +163,8 @@ class ChallengesApi {
   }
 
   // ============================================================
-  // WATCH ALL
+  // WATCH SINGLE
   // ============================================================
-
-  Stream<List<Challenge>> watchChallenges() {
-    return _challenges
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => Challenge.fromMap(id: doc.id, map: doc.data()))
-              .toList(),
-        );
-  }
 
   Stream<Challenge?> watchChallenge(String challengeId) {
     if (challengeId.trim().isEmpty) {
@@ -166,9 +185,20 @@ class ChallengesApi {
       return Challenge.fromMap(id: snapshot.id, map: data);
     });
   }
+
   // ============================================================
-  // WATCH CURRENT USER
+  // WATCH ALL
   // ============================================================
+
+  Stream<List<Challenge>> watchChallenges() {
+    return _challenges.orderBy('createdAt', descending: true).snapshots().map((
+      snapshot,
+    ) {
+      return snapshot.docs
+          .map((doc) => Challenge.fromMap(id: doc.id, map: doc.data()))
+          .toList();
+    });
+  }
 
   Stream<List<Challenge>> watchMyChallenges() {
     final userId = currentUserId;
@@ -181,13 +211,11 @@ class ChallengesApi {
               .map((doc) => Challenge.fromMap(id: doc.id, map: doc.data()))
               .toList();
 
-          // Sort newest first locally.
           challenges.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
           return challenges;
         });
   }
-
   // ============================================================
   // UPDATE STATUS
   // ============================================================
@@ -195,19 +223,76 @@ class ChallengesApi {
   Future<void> updateStatus({
     required String challengeId,
     required String status,
+    String note = '',
   }) async {
-    if (challengeId.trim().isEmpty) {
+    final normalizedId = challengeId.trim();
+
+    final normalizedStatus = status.trim();
+
+    if (normalizedId.isEmpty) {
       throw Exception('Challenge ID is required');
     }
 
-    if (status.trim().isEmpty) {
+    if (normalizedStatus.isEmpty) {
       throw Exception('Status is required');
     }
 
-    await _challenges.doc(challengeId).update({
-      'status': status.trim(),
+    final user = currentUser;
+    final now = DateTime.now();
+
+    final event = ChallengeStatusEvent(
+      status: normalizedStatus,
+      at: now,
+      updatedById: user.uid,
+      updatedByName: currentUserName,
+      note: note,
+    );
+
+    final update = <String, dynamic>{
+      'status': normalizedStatus,
+
       'updatedAt': FieldValue.serverTimestamp(),
-    });
+
+      'lastUpdatedById': user.uid,
+
+      'lastUpdatedByName': currentUserName,
+
+      'statusHistory': FieldValue.arrayUnion([event.toMap()]),
+    };
+
+    final value = normalizedStatus.toLowerCase();
+
+    // ==========================================================
+    // UNDER REVIEW
+    // ==========================================================
+
+    if (value == 'under review') {
+      update.addAll({
+        'reviewedById': user.uid,
+
+        'reviewedByName': currentUserName,
+
+        'reviewedAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    // ==========================================================
+    // SOLUTION DEPLOYED
+    // ==========================================================
+
+    if (value == 'solution deployed' || value == 'deployed') {
+      update['solutionDeployedAt'] = FieldValue.serverTimestamp();
+    }
+
+    // ==========================================================
+    // RESOLVED
+    // ==========================================================
+
+    if (value == 'resolved' || value == 'completed') {
+      update['resolvedAt'] = FieldValue.serverTimestamp();
+    }
+
+    await _challenges.doc(normalizedId).update(update);
   }
 
   // ============================================================
@@ -218,17 +303,28 @@ class ChallengesApi {
     required String challengeId,
     required String priority,
   }) async {
-    if (challengeId.trim().isEmpty) {
+    final id = challengeId.trim();
+
+    final value = priority.trim();
+
+    if (id.isEmpty) {
       throw Exception('Challenge ID is required');
     }
 
-    if (priority.trim().isEmpty) {
+    if (value.isEmpty) {
       throw Exception('Priority is required');
     }
 
-    await _challenges.doc(challengeId).update({
-      'priority': priority.trim(),
+    final user = currentUser;
+
+    await _challenges.doc(id).update({
+      'priority': value,
+
       'updatedAt': FieldValue.serverTimestamp(),
+
+      'lastUpdatedById': user.uid,
+
+      'lastUpdatedByName': currentUserName,
     });
   }
 
@@ -241,22 +337,57 @@ class ChallengesApi {
     required String universityId,
     required String universityName,
   }) async {
-    if (challengeId.trim().isEmpty) {
+    final challenge = challengeId.trim();
+
+    final uniId = universityId.trim();
+
+    final uniName = universityName.trim();
+
+    if (challenge.isEmpty) {
       throw Exception('Challenge ID is required');
     }
 
-    if (universityId.trim().isEmpty) {
+    if (uniId.isEmpty) {
       throw Exception('University ID is required');
     }
 
-    if (universityName.trim().isEmpty) {
+    if (uniName.isEmpty) {
       throw Exception('University name is required');
     }
 
-    await _challenges.doc(challengeId).update({
-      'assignedUniversityId': universityId.trim(),
-      'assignedUniversityName': universityName.trim(),
+    final user = currentUser;
+
+    final event = ChallengeStatusEvent(
+      status: 'Assigned',
+      at: DateTime.now(),
+      updatedById: user.uid,
+      updatedByName: currentUserName,
+      note: 'Assigned to $uniName',
+    );
+
+    await _challenges.doc(challenge).update({
+      // University
+      'assignedUniversityId': uniId,
+
+      'assignedUniversityName': uniName,
+
+      // Who assigned it
+      'assignedById': user.uid,
+
+      'assignedByName': currentUserName,
+
+      'assignedAt': FieldValue.serverTimestamp(),
+
+      // Workflow
       'status': 'Assigned',
+
+      'statusHistory': FieldValue.arrayUnion([event.toMap()]),
+
+      // Audit
+      'lastUpdatedById': user.uid,
+
+      'lastUpdatedByName': currentUserName,
+
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }

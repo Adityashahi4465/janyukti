@@ -24,26 +24,22 @@ void main() async {
       statusBarBrightness: Brightness.light,
     ),
   );
-  runApp(ProviderScope(child: JanYukti(store: AppStore())));
+  runApp(ProviderScope(child: JanYukti()));
 }
 
 class JanYukti extends StatelessWidget {
-  JanYukti({super.key, required this.store});
-  final AppStore store;
   final LanguageController languageController = LanguageController();
+  JanYukti({super.key});
   @override
-  Widget build(BuildContext context) => StoreScope(
-    store: store,
-    child: LanguageScope(
-      controller: languageController,
-      child: MaterialApp(
-        title: 'janYukti',
-        debugShowCheckedModeBanner: false,
-        builder: _withWhiteStatusBar,
-        theme: AppTheme.light,
-        initialRoute: Routes.welcome,
-        onGenerateRoute: AppRoutes.generate,
-      ),
+  Widget build(BuildContext context) => LanguageScope(
+    controller: languageController,
+    child: MaterialApp(
+      title: 'janYukti',
+      debugShowCheckedModeBanner: false,
+      builder: _withWhiteStatusBar,
+      theme: AppTheme.light,
+      initialRoute: Routes.welcome,
+      onGenerateRoute: AppRoutes.generate,
     ),
   );
 }

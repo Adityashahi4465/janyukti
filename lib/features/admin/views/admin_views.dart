@@ -91,9 +91,9 @@ class _DashboardHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Admin Dashboard',
+                  'Admin ',
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: 24,
                     fontWeight: FontWeight.w900,
                     color: Color(0xFF101B42),
                     letterSpacing: -0.7,
@@ -101,11 +101,6 @@ class _DashboardHeader extends StatelessWidget {
                 ),
 
                 SizedBox(height: 4),
-
-                Text(
-                  'Monitor challenges, registrations and platform activity',
-                  style: TextStyle(fontSize: 13.5, color: Color(0xFF667085)),
-                ),
               ],
             ),
           ),

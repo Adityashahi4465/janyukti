@@ -102,11 +102,22 @@ class AuthApi {
       fullName: data.fullName.trim(),
       email: data.email.trim(),
       phone: data.phone.trim(),
+
       status: data.role == UserRole.citizen ? 'active' : 'pending',
-      city: data.city.trim(),
-      state: data.state.trim(),
-      designation: data.designation.trim(),
+
       organizationId: org?.id,
+
+      universityId: null,
+
+      universityRole: data.role == UserRole.university
+          ? 'university_admin'
+          : null,
+
+      city: data.city.trim(),
+
+      state: data.state.trim(),
+
+      designation: data.designation.trim(),
     );
     final batch = _db.batch();
     batch.set(_db.collection('users').doc(user.uid), {
@@ -115,22 +126,46 @@ class AuthApi {
       'updatedAt': timestamp,
     });
     if (org != null) {
+      final organizationName = data.organizationName.trim();
+
       batch.set(org, {
         'id': org.id,
-        'name': data.organizationName.trim(),
-        'type': data.role.name,
+
+        'name': organizationName,
+
+        'normalizedName': _normalizeOrganizationName(organizationName),
+
+        'type': data.role.storageKey,
+
         if (data.role == UserRole.university)
           'organizationCategory': data.category,
+
         if (data.role == UserRole.industry) 'sector': data.category,
+
         'officialEmail': data.email.trim(),
+
+        'emailDomain': _emailDomain(data.email),
+
         'phone': data.phone.trim(),
+
         'website': data.website.trim(),
+
         'address': data.address.trim(),
+
         'city': data.city.trim(),
+
         'state': data.state.trim(),
+
+        // University registration has NOT
+        // been linked yet.
+        if (data.role == UserRole.university) 'universityId': null,
+
         'status': 'pending',
+
         'createdBy': user.uid,
+
         'createdAt': timestamp,
+
         'updatedAt': timestamp,
       });
     }
@@ -151,5 +186,24 @@ class AuthApi {
       rethrow;
     }
     return profile;
+  }
+
+  String _normalizeOrganizationName(String value) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  String _emailDomain(String email) {
+    final parts = email.trim().toLowerCase().split('@');
+
+    if (parts.length != 2) {
+      return '';
+    }
+
+    return parts.last;
   }
 }

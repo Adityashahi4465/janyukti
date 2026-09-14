@@ -1,297 +1,212 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/routes/app_routes.dart';
 import '../../../models/challenge_model.dart';
-import '../../../models/project_model.dart';
-import '../../../shared/mock_data/app_store.dart';
-import '../../../widgets/ui.dart';
 import '../../../theme/app_colors.dart';
+import '../../../widgets/ui.dart';
 import '../../auth/services/auth_session.dart';
+import '../controllers/university_controller.dart';
 
-class UniversityDashboard extends StatelessWidget {
+class UniversityDashboard extends ConsumerWidget {
   const UniversityDashboard({super.key});
+
   @override
-  Widget build(BuildContext c) {
-    final s = StoreScope.of(c);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final challengesAsync = ref.watch(assignedUniversityChallengesProvider);
+
+    final projectsAsync = ref.watch(universityProjectsProvider);
+
     return PageFrame(
       title: 'University Dashboard',
       color: AppColors.university,
       actions: [
         IconButton(
-          onPressed: () => AuthSession.signOut(c),
+          onPressed: () => AuthSession.signOut(context),
           icon: const Icon(Icons.logout_outlined),
         ),
       ],
-      child: ListView(
-        padding: const EdgeInsets.all(18),
-        children: [
-          Row(
+      child: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(assignedUniversityChallengesProvider);
+
+          ref.invalidate(universityProjectsProvider);
+
+          await ref.read(assignedUniversityChallengesProvider.future);
+        },
+        child: challengesAsync.when(
+          loading: () => ListView(
+            physics: AlwaysScrollableScrollPhysics(),
             children: [
-              Stat(
-                '${s.challenges.length}',
-                'Challenges Assigned',
-                AppColors.university,
-              ),
-              const SizedBox(width: 8),
-              Stat(
-                '${s.projects.length}',
-                'Projects in Progress',
-                AppColors.university,
+              SizedBox(
+                height: 350,
+                child: Center(child: CircularProgressIndicator()),
               ),
             ],
           ),
-          section('Quick actions'),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: ['My Projects', 'Team', 'Mentors', 'Reports']
-                .map(
-                  (x) => ActionChip(
-                    avatar: const Icon(Icons.grid_view, size: 16),
-                    label: Text(x),
-                    onPressed: () => Navigator.pushNamed(
-                      c,
-                      Routes.workspace,
-                      arguments: s.projects.first,
+
+          error: (error, _) => ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(24),
+            children: [
+              AppCard(
+                child: Text(error.toString().replaceFirst('Exception: ', '')),
+              ),
+            ],
+          ),
+
+          data: (challenges) {
+            final projects = projectsAsync.asData?.value ?? const [];
+
+            final active = challenges
+                .where(
+                  (challenge) =>
+                      challenge.status.toLowerCase() == 'in progress',
+                )
+                .length;
+
+            final deployed = challenges
+                .where(
+                  (challenge) =>
+                      challenge.status.toLowerCase() == 'solution deployed',
+                )
+                .length;
+
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(18),
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Stat(
+                        '${challenges.length}',
+                        'Assigned',
+                        AppColors.university,
+                      ),
+                    ),
+
+                    const SizedBox(width: 8),
+
+                    Expanded(
+                      child: Stat(
+                        '$active',
+                        'In Progress',
+                        AppColors.university,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: Stat(
+                        '${projects.length}',
+                        'Projects',
+                        AppColors.university,
+                      ),
+                    ),
+
+                    const SizedBox(width: 8),
+
+                    Expanded(
+                      child: Stat(
+                        '$deployed',
+                        'Solutions',
+                        AppColors.university,
+                      ),
+                    ),
+                  ],
+                ),
+
+                section('Assigned Challenges'),
+
+                if (challenges.isEmpty)
+                  const AppCard(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Text(
+                        'No challenges have been assigned to your university yet.',
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
-                )
-                .toList(),
-          ),
-          section('Recent Assigned Challenges'),
-          ...s.challenges.map(
-            (x) => AppCard(
-              onTap: () =>
-                  Navigator.pushNamed(c, Routes.challengeDetail, arguments: x),
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(
-                  Icons.water_drop,
-                  color: AppColors.university,
-                ),
-                title: Text(
-                  x.title,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                subtitle: Text(x.location),
-                trailing: StatusPill(x.priority),
-              ),
-            ),
-          ),
-        ],
+
+                for (final challenge in challenges)
+                  _UniversityChallengeCard(challenge: challenge),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 }
 
-class UniversityChallengeDetails extends StatelessWidget {
-  const UniversityChallengeDetails({super.key, required this.x});
-  final Challenge x;
-  @override
-  Widget build(BuildContext c) => PageFrame(
-    title: 'Challenge Details',
-    color: AppColors.university,
-    child: ListView(
-      padding: const EdgeInsets.all(18),
-      children: [
-        Text(
-          x.title,
-          style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 10),
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Challenge ID  ${x.id}'),
-              const Divider(),
-              Text('Category  ${x.category}'),
-              Text('Location  ${x.location}'),
-              Text('Submitted by  ${x.submittedBy}'),
-              const SizedBox(height: 10),
-              Text(x.description),
-              const SizedBox(height: 10),
-              StatusPill(x.priority),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        RoleButton(
-          label: 'Accept Challenge',
-          color: AppColors.university,
-          onTap: () {
-            StoreScope.of(c).accept(x);
-            Navigator.pushNamed(c, Routes.createProject, arguments: x);
-          },
-          icon: Icons.handshake,
-        ),
-      ],
-    ),
-  );
-}
+class _UniversityChallengeCard extends StatelessWidget {
+  const _UniversityChallengeCard({required this.challenge});
 
-class CreateProjectView extends StatefulWidget {
-  const CreateProjectView({super.key, required this.challenge});
   final Challenge challenge;
-  @override
-  State<CreateProjectView> createState() => _CreateProjectViewState();
-}
 
-class _CreateProjectViewState extends State<CreateProjectView> {
-  final name = TextEditingController(text: 'Water Purification System');
-  String mentor = 'Dr. Priya Sharma';
-  final members = ['Ankit Kumar', 'Neha Verma'];
   @override
-  Widget build(BuildContext c) => PageFrame(
-    title: 'Create Project',
-    color: AppColors.university,
-    child: ListView(
-      padding: const EdgeInsets.all(18),
-      children: [
-        TextField(
-          controller: name,
-          decoration: const InputDecoration(labelText: 'Project name *'),
-        ),
-        const SizedBox(height: 14),
-        DropdownButtonFormField(
-          initialValue: mentor,
-          items: [
-            for (final x in ['Dr. Priya Sharma', 'Prof. Rahul Kumar'])
-              DropdownMenuItem(value: x, child: Text(x)),
-          ],
-          onChanged: (x) => setState(() => mentor = x!),
-          decoration: const InputDecoration(labelText: 'Faculty mentor'),
-        ),
-        section('Team members'),
-        for (final x in members)
-          AppCard(
-            padding: 8,
-            child: ListTile(
-              title: Text(x),
-              leading: const CircleAvatar(child: Icon(Icons.person)),
-              trailing: IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => setState(() => members.remove(x)),
-              ),
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: () => Navigator.pushNamed(
+        context,
+        Routes.challengeDetail,
+        arguments: challenge.id,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.university.withOpacity(.08),
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: const Icon(
+              Icons.assignment_outlined,
+              color: AppColors.university,
             ),
           ),
-        OutlinedButton.icon(
-          onPressed: () => setState(() => members.add('New Team Member')),
-          icon: const Icon(Icons.add),
-          label: const Text('Add Member'),
-        ),
-        const SizedBox(height: 18),
-        RoleButton(
-          label: 'Create Project',
-          color: AppColors.university,
-          onTap: () {
-            final p = StoreScope.of(c).createProject(name.text, mentor);
-            Navigator.pushNamed(c, Routes.workspace, arguments: p);
-          },
-        ),
-      ],
-    ),
-  );
-}
 
-class ProjectWorkspace extends StatelessWidget {
-  const ProjectWorkspace({super.key, required this.p});
-  final Project p;
-  @override
-  Widget build(BuildContext c) {
-    final s = StoreScope.of(c);
-    return DefaultTabController(
-      length: 4,
-      child: PageFrame(
-        title: 'Project Workspace',
-        color: AppColors.university,
-        child: Column(
-          children: [
-            const TabBar(
-              tabs: [
-                Tab(text: 'Overview'),
-                Tab(text: 'Milestones'),
-                Tab(text: 'Team'),
-                Tab(text: 'Files'),
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  challenge.title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+
+                const SizedBox(height: 5),
+
+                Text(
+                  challenge.location,
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 11.5,
+                  ),
+                ),
+
+                const SizedBox(height: 7),
+
+                StatusPill(challenge.status),
               ],
             ),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  ListView(
-                    padding: const EdgeInsets.all(18),
-                    children: [
-                      Text(
-                        p.name,
-                        style: const TextStyle(
-                          fontSize: 21,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      LinearProgressIndicator(
-                        value: p.progress / 100,
-                        color: AppColors.university,
-                      ),
-                      Text('${p.progress}% complete'),
-                      section('Milestones'),
-                      Timeline(
-                        items: p.milestones,
-                        active: p.activeMilestone,
-                        color: AppColors.university,
-                      ),
-                      RoleButton(
-                        label: 'Update Progress',
-                        color: AppColors.university,
-                        onTap: () => s.advance(p),
-                        icon: Icons.update,
-                      ),
-                    ],
-                  ),
-                  ListView(
-                    padding: const EdgeInsets.all(18),
-                    children: p.milestones
-                        .asMap()
-                        .entries
-                        .map(
-                          (e) => AppCard(
-                            child: ListTile(
-                              leading: Icon(
-                                e.key <= p.activeMilestone
-                                    ? Icons.check_circle
-                                    : Icons.radio_button_unchecked,
-                                color: AppColors.university,
-                              ),
-                              title: Text(e.value),
-                              trailing: Text(
-                                e.key < p.activeMilestone
-                                    ? 'Completed'
-                                    : e.key == p.activeMilestone
-                                    ? 'In Progress'
-                                    : 'Pending',
-                              ),
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  const Center(
-                    child: Text(
-                      'Faculty mentor\nDr. Priya Sharma\n\nTeam: Ankit, Neha',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const Center(
-                    child: Icon(
-                      Icons.folder_open,
-                      size: 60,
-                      color: AppColors.muted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+
+          const Icon(Icons.chevron_right_rounded),
+        ],
       ),
     );
   }

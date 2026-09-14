@@ -288,13 +288,18 @@ class ChallengeController extends StateNotifier<AsyncValue<Challenge?>> {
 
         voiceNotes: voiceNotes,
 
-        status: 'Under Review',
+        // IMPORTANT:
+        status: 'Submitted',
 
         priority: 'Medium',
 
         submittedBy: _api.currentUserName,
 
         submittedById: userId,
+
+        createdAt: DateTime.now(),
+
+        updatedAt: DateTime.now(),
       );
 
       // ========================================================
@@ -328,8 +333,13 @@ class ChallengeController extends StateNotifier<AsyncValue<Challenge?>> {
   Future<void> updateStatus({
     required String challengeId,
     required String status,
+    required String note,
   }) async {
-    await _api.updateStatus(challengeId: challengeId, status: status);
+    await _api.updateStatus(
+      challengeId: challengeId,
+      status: status,
+      note: note,
+    );
   }
 
   // ============================================================

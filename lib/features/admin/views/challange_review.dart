@@ -3,10 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../core/routes/app_routes.dart';
 import '../../../models/challenge_model.dart';
+import '../../../models/university_recommendation.dart';
 import '../../../theme/app_colors.dart';
 import '../../../widgets/ui.dart';
 import '../../citizen/controllers/citizen_controller.dart';
+import '../../university/controllers/university_controller.dart';
+import '../widgets/best_university_card.dart';
 
 class ChallengeReview extends ConsumerStatefulWidget {
   const ChallengeReview({super.key, required this.x});
@@ -18,21 +22,32 @@ class ChallengeReview extends ConsumerStatefulWidget {
 }
 
 class _ChallengeReviewState extends ConsumerState<ChallengeReview> {
-  static const List<_UniversityOption> _universities = [
-    _UniversityOption(id: 'bit_mesra', name: 'BIT Mesra'),
-    _UniversityOption(id: 'ranchi_university', name: 'Ranchi University'),
-    _UniversityOption(id: 'iit_ism', name: 'IIT ISM'),
-  ];
-
-  _UniversityOption? _selectedUniversity;
-
+  String? _selectedUniversityId;
   bool _isAssigning = false;
 
-  @override
-  void initState() {
-    super.initState();
+  bool _isChallengeAssigned(Challenge challenge) {
+    final status = challenge.status.trim().toLowerCase();
 
-    _selectedUniversity = _universities.first;
+    final hasUniversityId =
+        challenge.assignedUniversityId?.trim().isNotEmpty == true;
+
+    final hasUniversityName =
+        challenge.assignedUniversityName?.trim().isNotEmpty == true;
+
+    return hasUniversityId ||
+        hasUniversityName ||
+        status.startsWith('assigned') ||
+        status == 'in progress' ||
+        status == 'solution deployed' ||
+        status == 'deployed' ||
+        status == 'resolved' ||
+        status == 'completed';
+  }
+
+  bool _isChallengeCompleted(Challenge challenge) {
+    final status = challenge.status.trim().toLowerCase();
+
+    return status == 'resolved' || status == 'completed';
   }
 
   @override
@@ -44,7 +59,11 @@ class _ChallengeReviewState extends ConsumerState<ChallengeReview> {
     final challengeAsync = ref.watch(challengeStreamProvider(widget.x.id));
 
     final challenge = challengeAsync.asData?.value ?? widget.x;
+    final isLiveDataLoaded = challengeAsync.asData?.value != null;
 
+    final isAssigned = _isChallengeAssigned(challenge);
+
+    final isCompleted = _isChallengeCompleted(challenge);
     return PageFrame(
       title: 'Review Challenge',
       color: AppColors.admin,
@@ -208,93 +227,29 @@ class _ChallengeReviewState extends ConsumerState<ChallengeReview> {
             // ======================================================
             // UNIVERSITY ASSIGNMENT
             // ======================================================
-            _sectionTitle(
-              'Assign University',
-              'Select the institution responsible for taking this challenge forward.',
-            ),
+            // ======================================================
+            // WORKFLOW ACTION
+            // ======================================================
+            if (!isLiveDataLoaded) ...[
+              _sectionTitle(
+                'Assignment',
+                'Checking the latest assignment status...',
+              ),
 
+              const SizedBox(height: 12),
+
+              const AppCard(
+                child: SizedBox(
+                  height: 70,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ),
+            ] else if (isAssigned) ...[
+              _buildAssignedSection(context, challenge, completed: isCompleted),
+            ] else ...[
+              _buildAssignmentSection(context, challenge),
+            ],
             const SizedBox(height: 12),
-
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFE0E6EF)),
-              ),
-              child: DropdownButtonFormField<_UniversityOption>(
-                initialValue: _selectedUniversity,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: 'University',
-                  prefixIcon: Icon(
-                    Icons.school_outlined,
-                    color: AppColors.admin,
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFFF8FAFC),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFE0E6EF)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: AppColors.admin, width: 1.5),
-                  ),
-                ),
-                items: _universities.map((university) {
-                  return DropdownMenuItem<_UniversityOption>(
-                    value: university,
-                    child: Text(university.name),
-                  );
-                }).toList(),
-                onChanged: _isAssigning
-                    ? null
-                    : (value) {
-                        setState(() {
-                          _selectedUniversity = value;
-                        });
-                      },
-              ),
-            ),
-
-            const SizedBox(height: 18),
-
-            // ======================================================
-            // ASSIGN BUTTON
-            // ======================================================
-            SizedBox(
-              height: 54,
-              child: FilledButton.icon(
-                onPressed: _isAssigning || _selectedUniversity == null
-                    ? null
-                    : () => _assignChallenge(context, challenge),
-                icon: _isAssigning
-                    ? const SizedBox(
-                        width: 19,
-                        height: 19,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.assignment_ind_rounded),
-                label: Text(
-                  _isAssigning ? 'Assigning...' : 'Assign Challenge',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.admin,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-              ),
-            ),
           ],
         ),
       ),
@@ -308,10 +263,45 @@ class _ChallengeReviewState extends ConsumerState<ChallengeReview> {
   Future<void> _assignChallenge(
     BuildContext context,
     Challenge challenge,
+    UniversityRecommendation recommendation,
   ) async {
-    final university = _selectedUniversity;
+    if (_isAssigning) {
+      return;
+    }
 
-    if (university == null) {
+    final university = recommendation.university;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Assign Challenge?'),
+          content: Text(
+            'Assign this challenge to:\n\n'
+            '${university.name}\n'
+            '${recommendation.percentage}% relevance\n\n'
+            'Once assigned, it will move to Project Monitoring.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancel'),
+            ),
+
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Assign'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) {
       return;
     }
 
@@ -324,24 +314,31 @@ class _ChallengeReviewState extends ConsumerState<ChallengeReview> {
           .read(citizenControllerProvider.notifier)
           .assignUniversity(
             challengeId: challenge.id,
+
+            // REAL CANONICAL ID
             universityId: university.id,
+
             universityName: university.name,
           );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text('Challenge assigned to ${university.name}'),
+            content: Text('Challenge assigned to ${university.name}.'),
             behavior: SnackBarBehavior.floating,
           ),
         );
 
       Navigator.pop(context);
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
@@ -360,7 +357,6 @@ class _ChallengeReviewState extends ConsumerState<ChallengeReview> {
       }
     }
   }
-
   // ============================================================
   // HEADER
   // ============================================================
@@ -620,6 +616,491 @@ class _ChallengeReviewState extends ConsumerState<ChallengeReview> {
     final minute = date.minute.toString().padLeft(2, '0');
 
     return '$day/$month/${date.year} $hour:$minute';
+  }
+
+  Widget _buildAssignmentSection(BuildContext context, Challenge challenge) {
+    final recommendationsAsync = ref.watch(
+      universityRecommendationsProvider(challenge.id),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle(
+          'Assign University',
+          'Universities are ranked based on their relevance to this challenge.',
+        ),
+
+        const SizedBox(height: 12),
+
+        recommendationsAsync.when(
+          loading: () {
+            return Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 30),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFE0E6EF)),
+              ),
+              child: const Column(
+                children: [
+                  CircularProgressIndicator(),
+
+                  SizedBox(height: 12),
+
+                  Text(
+                    'Finding best universities...',
+                    style: TextStyle(color: AppColors.muted, fontSize: 12),
+                  ),
+                ],
+              ),
+            );
+          },
+
+          error: (error, stackTrace) {
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(.05),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.red.withOpacity(.15)),
+              ),
+              child: Column(
+                children: [
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.error_outline_rounded,
+                        color: Colors.redAccent,
+                      ),
+
+                      SizedBox(width: 8),
+
+                      Expanded(
+                        child: Text(
+                          'Unable to load university recommendations.',
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  TextButton.icon(
+                    onPressed: () {
+                      ref.invalidate(
+                        universityRecommendationsProvider(challenge.id),
+                      );
+                    },
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          },
+
+          data: (recommendations) {
+            if (recommendations.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(.06),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.orange.withOpacity(.15)),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.school_outlined, color: Colors.orange),
+
+                    SizedBox(width: 10),
+
+                    Expanded(
+                      child: Text(
+                        'No active ML-eligible universities are currently available for this challenge.',
+                        style: TextStyle(fontSize: 12, color: AppColors.muted),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            // ====================================================
+            // SELECTED UNIVERSITY
+            // ====================================================
+
+            UniversityRecommendation selected = recommendations.first;
+
+            if (_selectedUniversityId != null) {
+              for (final recommendation in recommendations) {
+                if (recommendation.university.id == _selectedUniversityId) {
+                  selected = recommendation;
+
+                  break;
+                }
+              }
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ==================================================
+                // BEST MATCH
+                // ==================================================
+                BestUniversityCard(recommendation: recommendations.first),
+
+                const SizedBox(height: 16),
+
+                // ==================================================
+                // DROPDOWN
+                // ==================================================
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0xFFE0E6EF)),
+                  ),
+                  child: DropdownButtonFormField<String>(
+                    key: ValueKey('university-${selected.university.id}'),
+
+                    initialValue: selected.university.id,
+
+                    isExpanded: true,
+
+                    decoration: InputDecoration(
+                      labelText: 'Select university',
+
+                      prefixIcon: Icon(
+                        Icons.school_outlined,
+                        color: AppColors.admin,
+                      ),
+
+                      filled: true,
+
+                      fillColor: const Color(0xFFF8FAFC),
+
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFE0E6EF)),
+                      ),
+
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: AppColors.admin,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+
+                    items: recommendations.map((recommendation) {
+                      final university = recommendation.university;
+
+                      return DropdownMenuItem<String>(
+                        value: university.id,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                university.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+
+                            const SizedBox(width: 8),
+
+                            Text(
+                              '${recommendation.percentage}%',
+                              style: TextStyle(
+                                color: universityScoreColor(
+                                  recommendation.score,
+                                ),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+
+                    onChanged: _isAssigning
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _selectedUniversityId = value;
+                            });
+                          },
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // ==================================================
+                // SELECTED UNIVERSITY DETAILS
+                // ==================================================
+                SelectedUniversityInfo(recommendation: selected),
+
+                const SizedBox(height: 18),
+
+                // ==================================================
+                // ASSIGN
+                // ==================================================
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: FilledButton.icon(
+                    onPressed: _isAssigning
+                        ? null
+                        : () => _assignChallenge(context, challenge, selected),
+
+                    icon: _isAssigning
+                        ? const SizedBox(
+                            width: 19,
+                            height: 19,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.assignment_ind_rounded),
+
+                    label: Text(
+                      _isAssigning
+                          ? 'Assigning...'
+                          : 'Assign ${selected.university.name}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.admin,
+
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAssignedSection(
+    BuildContext context,
+    Challenge challenge, {
+    required bool completed,
+  }) {
+    final universityName = challenge.assignedUniversityName?.trim();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle(
+          completed ? 'Challenge Completed' : 'Challenge Assigned',
+          completed
+              ? 'This challenge has completed its workflow.'
+              : 'This challenge has already been assigned and is now being handled by the university.',
+        ),
+
+        const SizedBox(height: 12),
+
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: completed
+                ? Colors.green.withOpacity(.06)
+                : AppColors.admin.withOpacity(.06),
+
+            borderRadius: BorderRadius.circular(18),
+
+            border: Border.all(
+              color: completed
+                  ? Colors.green.withOpacity(.18)
+                  : AppColors.admin.withOpacity(.18),
+            ),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: completed
+                          ? Colors.green.withOpacity(.12)
+                          : AppColors.admin.withOpacity(.12),
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Icon(
+                      completed
+                          ? Icons.check_circle_outline_rounded
+                          : Icons.school_rounded,
+                      color: completed ? Colors.green : AppColors.admin,
+                    ),
+                  ),
+
+                  const SizedBox(width: 13),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          completed
+                              ? 'Resolved'
+                              : universityName != null &&
+                                    universityName.isNotEmpty
+                              ? universityName
+                              : 'Assigned University',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.title,
+                          ),
+                        ),
+
+                        const SizedBox(height: 3),
+
+                        Text(
+                          'Current status: ${challenge.status}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  Icon(
+                    completed
+                        ? Icons.verified_rounded
+                        : Icons.check_circle_rounded,
+                    color: completed ? Colors.green : AppColors.admin,
+                  ),
+                ],
+              ),
+
+              if (challenge.assignedAt != null) ...[
+                const Divider(height: 28),
+
+                _assignmentInfoRow(
+                  icon: Icons.schedule_rounded,
+                  label: 'Assigned on',
+                  value: _formatDate(challenge.assignedAt!),
+                ),
+              ],
+
+              if (challenge.assignedByName?.trim().isNotEmpty == true &&
+                  challenge.assignedByName?.trim() != universityName) ...[
+                const SizedBox(height: 12),
+
+                _assignmentInfoRow(
+                  icon: Icons.admin_panel_settings_outlined,
+                  label: 'Assigned by',
+                  value: challenge.assignedByName!,
+                ),
+              ],
+
+              const SizedBox(height: 18),
+
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.pushNamed(
+                      context,
+                      Routes.monitoring,
+                      arguments: challenge.id,
+                    );
+                  },
+                  icon: Icon(
+                    completed
+                        ? Icons.visibility_outlined
+                        : Icons.monitor_heart_outlined,
+                  ),
+                  label: Text(
+                    completed ? 'View Monitoring' : 'Open Monitoring',
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.admin,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        if (!completed) ...[
+          const SizedBox(height: 10),
+
+          const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                size: 17,
+                color: AppColors.muted,
+              ),
+
+              SizedBox(width: 7),
+
+              Expanded(
+                child: Text(
+                  'University assignment is locked after assignment. Use the monitoring workflow to track further progress.',
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 11.5,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _assignmentInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.admin),
+
+        const SizedBox(width: 9),
+
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(color: AppColors.muted, fontSize: 12),
+          ),
+        ),
+
+        Text(
+          value,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
   }
 }
 

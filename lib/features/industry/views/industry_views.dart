@@ -10,7 +10,7 @@ class IndustryDashboard extends StatelessWidget {
   const IndustryDashboard({super.key});
   @override
   Widget build(BuildContext c) {
-    final s = StoreScope.of(c);
+    // final s = StoreScope.of(c);
     return PageFrame(
       title: 'Industry Dashboard',
       color: AppColors.industry,
@@ -25,19 +25,19 @@ class IndustryDashboard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Stat('${s.projects.length}', 'Opportunities', AppColors.industry),
+              // Stat('${s.projects.length}', 'Opportunities', AppColors.industry),
               const SizedBox(width: 8),
               const Stat('3', 'Collaborations', AppColors.industry),
             ],
           ),
           section('Recommended Projects'),
-          ...s.projects.map(
-            (p) => ProjectCard(
-              p,
-              onTap: () =>
-                  Navigator.pushNamed(c, Routes.projectDetail, arguments: p),
-            ),
-          ),
+          // // ...s.projects.map(
+          // //   (p) => ProjectCard(
+          // //     p,
+          // //     onTap: () =>
+          // //         Navigator.pushNamed(c, Routes.projectDetail, arguments: p),
+          // //   ),
+          // ),
         ],
       ),
     );
@@ -55,10 +55,10 @@ class ProjectCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(p.name, style: const TextStyle(fontWeight: FontWeight.w900)),
-        Text(
-          '${p.university} • ${p.category}',
-          style: const TextStyle(color: AppColors.muted),
-        ),
+        // Text(
+        //   '${p.university} • ${p.category}',
+        //   style: const TextStyle(color: AppColors.muted),
+        // ),
         const SizedBox(height: 10),
         LinearProgressIndicator(
           value: p.progress / 100,
@@ -89,9 +89,9 @@ class ProjectDetails extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('University  ${p.university}'),
+              // Text('University  ${p.university}'),
               Text('Mentor  ${p.mentor}'),
-              Text('Category  ${p.category}'),
+              // Text('Category  ${p.category}'),
               const SizedBox(height: 12),
               LinearProgressIndicator(
                 value: p.progress / 100,
@@ -177,7 +177,7 @@ class Collaborations extends StatelessWidget {
   const Collaborations({super.key});
   @override
   Widget build(BuildContext c) {
-    final p = StoreScope.of(c).projects.first;
+    // final p = StoreScope.of(c).projects.first;
     return DefaultTabController(
       length: 2,
       child: PageFrame(
@@ -197,10 +197,10 @@ class Collaborations extends StatelessWidget {
                   ListView(
                     padding: const EdgeInsets.all(18),
                     children: [
-                      ProjectCard(
-                        p,
-                        onTap: () => Navigator.pushNamed(c, Routes.chat),
-                      ),
+                      // ProjectCard(
+                      //   p,
+                      //   onTap: () => Navigator.pushNamed(c, Routes.chat),
+                      // ),
                     ],
                   ),
                   const Center(
@@ -226,7 +226,7 @@ class _CollaborationChatState extends State<CollaborationChat> {
   final text = TextEditingController();
   @override
   Widget build(BuildContext c) {
-    final s = StoreScope.of(c);
+    // final s = StoreScope.of(c);
     return PageFrame(
       title: 'Collaboration Chat',
       color: AppColors.industry,
@@ -236,13 +236,13 @@ class _CollaborationChatState extends State<CollaborationChat> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                for (final x in s.chats)
-                  Align(
-                    alignment: x.startsWith('You')
-                        ? Alignment.centerRight
-                        : Alignment.centerLeft,
-                    child: AppCard(padding: 10, child: Text(x)),
-                  ),
+                // for (final x in s.chats)
+                //   Align(
+                //     alignment: x.startsWith('You')
+                //         ? Alignment.centerRight
+                //         : Alignment.centerLeft,
+                //     child: AppCard(padding: 10, child: Text(x)),
+                //   ),
               ],
             ),
           ),
@@ -260,7 +260,7 @@ class _CollaborationChatState extends State<CollaborationChat> {
                 ),
                 IconButton(
                   onPressed: () {
-                    s.send(text.text);
+                    // s.send(text.text);
                     text.clear();
                   },
                   icon: const Icon(Icons.send, color: AppColors.industry),
