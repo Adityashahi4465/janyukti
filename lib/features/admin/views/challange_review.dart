@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/routes/app_routes.dart';
+import '../../../apis/challenges_api.dart';
 import '../../../models/challenge_model.dart';
 import '../../../models/university_recommendation.dart';
 import '../../../theme/app_colors.dart';
@@ -11,6 +12,7 @@ import '../../../widgets/ui.dart';
 import '../../citizen/controllers/citizen_controller.dart';
 import '../../university/controllers/university_controller.dart';
 import '../widgets/best_university_card.dart';
+import '../providers/duplicate_check_provider.dart';
 
 class ChallengeReview extends ConsumerStatefulWidget {
   const ChallengeReview({super.key, required this.x});
@@ -70,6 +72,8 @@ class _ChallengeReviewState extends ConsumerState<ChallengeReview> {
       child: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(challengeStreamProvider(widget.x.id));
+          ref.invalidate(duplicateCheckProvider(widget.x.id));
+          ref.invalidate(universityRecommendationsProvider(widget.x.id));
 
           await ref.read(challengeStreamProvider(widget.x.id).future);
         },
@@ -265,7 +269,11 @@ class _ChallengeReviewState extends ConsumerState<ChallengeReview> {
     Challenge challenge,
     UniversityRecommendation recommendation,
   ) async {
-    if (_isAssigning) {
+    final duplicateState = ref.read(duplicateCheckProvider(challenge.id));
+    if (_isAssigning ||
+        !duplicateState.hasValue ||
+        duplicateState.isLoading ||
+        duplicateState.hasError) {
       return;
     }
 
@@ -280,7 +288,8 @@ class _ChallengeReviewState extends ConsumerState<ChallengeReview> {
             'Assign this challenge to:\n\n'
             '${university.name}\n'
             '${recommendation.percentage}% relevance\n\n'
-            'Once assigned, it will move to Project Monitoring.',
+            'Once assigned, it will move to Project Monitoring. '
+            'Please confirm you have reviewed the duplicate check above.',
           ),
           actions: [
             TextButton(
@@ -618,7 +627,100 @@ class _ChallengeReviewState extends ConsumerState<ChallengeReview> {
     return '$day/$month/${date.year} $hour:$minute';
   }
 
+  Widget _buildDuplicateCheck(Challenge challenge) {
+    final duplicates = ref.watch(duplicateCheckProvider(challenge.id));
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Duplicate review',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          duplicates.when(
+            skipLoadingOnRefresh: false,
+            loading: () => const Column(
+              children: [
+                LinearProgressIndicator(),
+                SizedBox(height: 8),
+                Text('Checking existing challenges before assignment...'),
+              ],
+            ),
+            error: (error, _) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Duplicate check unavailable. $error'),
+                TextButton(
+                  onPressed: () =>
+                      ref.invalidate(duplicateCheckProvider(challenge.id)),
+                  child: const Text('Retry duplicate check'),
+                ),
+              ],
+            ),
+            data: (result) {
+              final candidates = List<Map<String, dynamic>>.from(
+                result['candidates'] as List,
+              );
+              if (candidates.isEmpty) {
+                return const Text('No similar challenges found.');
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Similar challenges found. Review these before assigning new work.',
+                  ),
+                  for (final candidate in candidates)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(candidate['title'] as String),
+                      subtitle: Text(
+                        '${((candidate['score'] as num) * 100).round()}% similarity · ${candidate['status']}',
+                      ),
+                      trailing: const Icon(Icons.open_in_new),
+                      onTap: () async {
+                        try {
+                          final match = await ref
+                              .read(challengesApiProvider)
+                              .getChallenge(candidate['challengeId'] as String);
+                          if (!mounted) return;
+                          if (match == null) {
+                            throw Exception(
+                              'This challenge is no longer available.',
+                            );
+                          }
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => ChallengeReview(x: match),
+                            ),
+                          );
+                        } catch (_) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Unable to open this challenge. Please retry.',
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  const Text(
+                    'Similarity is a suggestion; you can still assign after reviewing.',
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAssignmentSection(BuildContext context, Challenge challenge) {
+    final duplicateState = ref.watch(duplicateCheckProvider(challenge.id));
     final recommendationsAsync = ref.watch(
       universityRecommendationsProvider(challenge.id),
     );
@@ -633,6 +735,8 @@ class _ChallengeReviewState extends ConsumerState<ChallengeReview> {
 
         const SizedBox(height: 12),
 
+        _buildDuplicateCheck(challenge),
+        const SizedBox(height: 16),
         recommendationsAsync.when(
           loading: () {
             return Container(
@@ -719,7 +823,7 @@ class _ChallengeReviewState extends ConsumerState<ChallengeReview> {
 
                     Expanded(
                       child: Text(
-                        'No active ML-eligible universities are currently available for this challenge.',
+                        'No active universities with approved accounts are currently available.',
                         style: TextStyle(fontSize: 12, color: AppColors.muted),
                       ),
                     ),
@@ -854,7 +958,11 @@ class _ChallengeReviewState extends ConsumerState<ChallengeReview> {
                   width: double.infinity,
                   height: 54,
                   child: FilledButton.icon(
-                    onPressed: _isAssigning
+                    onPressed:
+                        _isAssigning ||
+                            !duplicateState.hasValue ||
+                            duplicateState.isLoading ||
+                            duplicateState.hasError
                         ? null
                         : () => _assignChallenge(context, challenge, selected),
 

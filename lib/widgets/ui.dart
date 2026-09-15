@@ -106,29 +106,27 @@ class Stat extends StatelessWidget {
   final String value, label;
   final Color color;
   @override
-  Widget build(BuildContext c) => Expanded(
-    child: AppCard(
-      padding: 12,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        spacing: 4,
-        children: [
-          Text(
-            value,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
+  Widget build(BuildContext c) => AppCard(
+    padding: 12,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      spacing: 4,
+      children: [
+        Text(
+          value,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: color,
           ),
-          Text(
-            tr(c, label),
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 11, color: AppColors.muted),
-          ),
-        ],
-      ),
+        ),
+        Text(
+          tr(c, label),
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 11, color: AppColors.muted),
+        ),
+      ],
     ),
   );
 }

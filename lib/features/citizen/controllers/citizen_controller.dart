@@ -121,6 +121,7 @@ class ChallengeController extends StateNotifier<AsyncValue<Challenge?>> {
     required String location,
 
     String additionalInfo = '',
+    String priority = 'Medium',
 
     double? latitude,
     double? longitude,
@@ -291,7 +292,7 @@ class ChallengeController extends StateNotifier<AsyncValue<Challenge?>> {
         // IMPORTANT:
         status: 'Submitted',
 
-        priority: 'Medium',
+        priority: priority,
 
         submittedBy: _api.currentUserName,
 

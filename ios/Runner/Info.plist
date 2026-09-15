@@ -51,6 +51,14 @@
 	</array>
 
 
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Connect to the JanYukti AI service on your local network during development.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+
 	<!-- LOCATION -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>We use your location to identify where the challenge is happening.</string>

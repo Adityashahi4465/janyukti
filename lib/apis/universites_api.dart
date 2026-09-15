@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +6,6 @@ import '../core/providers/instance_providers.dart';
 import '../models/challenge_model.dart';
 import '../models/project_model.dart';
 import '../models/university_model.dart';
-import '../models/university_recommendation.dart';
 import '../models/user_model.dart';
 import '../models/user_role.dart';
 import 'auth_api.dart';
@@ -658,123 +655,27 @@ class UniversityApi {
   }
 
   // ============================================================
-  // GET REAL ELIGIBLE UNIVERSITIES + RANK THEM
+  // GET ACTIVE UNIVERSITIES LINKED TO APPROVED ACCOUNTS
   // ============================================================
 
-  Future<List<UniversityRecommendation>> getBestUniversitiesForChallenge(
-    Challenge challenge, {
-    int limit = 10,
-  }) async {
-    // Single-field query avoids unnecessary composite-index issues.
+  Future<List<UniversityModel>> getMatchingUniversities() async {
     final snapshot = await _universities.where('active', isEqualTo: true).get();
-
-    final universities = snapshot.docs
+    final accounts = await _db
+        .collection('users')
+        .where('role', isEqualTo: 'university')
+        .get();
+    final approvedIds = accounts.docs
+        .where((doc) => doc.data()['status'] == 'active')
+        .map((doc) => doc.data()['universityId'])
+        .whereType<String>()
+        .toSet();
+    return snapshot.docs
         .map((doc) => UniversityModel.fromMap(id: doc.id, map: doc.data()))
-        // ML recommendations should only use ML-ready universities.
-        .where((university) => university.mlEligible)
+        .where(
+          (university) =>
+              approvedIds.contains(university.id) &&
+              university.name.trim().isNotEmpty,
+        )
         .toList();
-
-    final recommendations = universities.map((university) {
-      return _calculateRecommendation(challenge, university);
-    }).toList();
-
-    recommendations.sort((a, b) => b.score.compareTo(a.score));
-
-    if (recommendations.length > limit) {
-      return recommendations.take(limit).toList();
-    }
-
-    return recommendations;
-  }
-
-  // ============================================================
-  // CURRENT TEMPORARY RANKING
-  //
-  // This uses REAL capability scores imported from ML dataset.
-  // Replace this method later with your ML HTTP endpoint.
-  // ============================================================
-
-  UniversityRecommendation _calculateRecommendation(
-    Challenge challenge,
-    UniversityModel university,
-  ) {
-    var score = 0.0;
-
-    final reasons = <String>[];
-
-    // ----------------------------------------------------------
-    // CATEGORY / CAPABILITY
-    // ----------------------------------------------------------
-
-    final challengeCategory = _normaliseKey(challenge.category);
-
-    var capabilityScore = 0.0;
-
-    for (final entry in university.capabilities.entries) {
-      if (_normaliseKey(entry.key) == challengeCategory) {
-        capabilityScore = max(capabilityScore, entry.value);
-      }
-    }
-
-    // Capability contributes 90%
-    score += capabilityScore * 0.90;
-
-    if (capabilityScore >= .80) {
-      reasons.add('Very strong expertise in ${challenge.category}');
-    } else if (capabilityScore >= .60) {
-      reasons.add('Strong expertise in ${challenge.category}');
-    } else if (capabilityScore > 0) {
-      reasons.add('Relevant expertise in ${challenge.category}');
-    }
-
-    // ----------------------------------------------------------
-    // LOCATION
-    // ----------------------------------------------------------
-
-    final challengeLocation = _normaliseText(challenge.location);
-
-    final city = _normaliseText(university.city);
-
-    final state = _normaliseText(university.state);
-
-    // Geographic relevance contributes remaining 10%.
-    if (city.isNotEmpty && challengeLocation.contains(city)) {
-      score += .06;
-
-      reasons.add('Located near the reported challenge');
-    }
-
-    if (state.isNotEmpty && challengeLocation.contains(state)) {
-      score += .04;
-
-      if (!reasons.contains('Located near the reported challenge')) {
-        reasons.add('Located in the same region');
-      }
-    }
-
-    score = score.clamp(0.0, 1.0);
-
-    if (reasons.isEmpty) {
-      reasons.add('ML-eligible university');
-    }
-
-    return UniversityRecommendation(
-      university: university,
-      score: score,
-      reasons: reasons,
-    );
-  }
-
-  String _normaliseKey(String value) {
-    return value.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-  }
-
-  String _normaliseText(String value) {
-    return value
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
   }
 }

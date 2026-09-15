@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:stt_record/stt_record.dart';
 
 import '../../../core/routes/app_routes.dart' show Routes;
+import '../../../apis/ai_api.dart';
 import '../../../theme/app_colors.dart';
 import '../../../widgets/ui.dart' show AppCard, PageFrame;
 import '../controllers/citizen_controller.dart';
@@ -66,6 +67,93 @@ class _SubmitChallengeViewState extends ConsumerState<SubmitChallengeView> {
   final AudioPlayer _audioPlayer = AudioPlayer();
 
   String _category = 'Water Management';
+  AiAnalysis? _analysis;
+  String? _aiError;
+  Timer? _aiDebounce;
+  int _aiRevision = 0;
+  bool _analyzing = false;
+  bool _preparingSubmission = false;
+  bool _categoryOverridden = false;
+
+  Map<String, dynamic> get _draft => {
+    'title': _titleController.text.trim(),
+    'description': _descriptionController.text.trim(),
+    'additionalInfo': _additionalController.text.trim(),
+    'location': _locationController.text.trim(),
+    'category': _category,
+  };
+
+  void _scheduleAnalysis() {
+    _aiDebounce?.cancel();
+    _aiRevision++;
+    setState(() {
+      _analysis = null;
+      _aiError = null;
+      _analyzing = false;
+    });
+    if (_titleController.text.trim().length < 5 ||
+        _descriptionController.text.trim().length < 15) {
+      return;
+    }
+    _aiDebounce = Timer(const Duration(milliseconds: 900), _analyze);
+  }
+
+  Future<void> _analyze() async {
+    _aiDebounce?.cancel();
+    final revision = ++_aiRevision;
+    final draft = _draft;
+    setState(() {
+      _analyzing = true;
+      _aiError = null;
+    });
+    try {
+      final result = await ref.read(aiApiProvider).analyze(draft);
+      if (!mounted || revision != _aiRevision) return;
+      setState(() {
+        _analysis = result;
+        if (!_categoryOverridden) _category = result.category;
+      });
+    } catch (error) {
+      if (!mounted || revision != _aiRevision) return;
+      setState(() {
+        _analysis = null;
+        _aiError = error.toString();
+      });
+    } finally {
+      if (mounted && revision == _aiRevision) {
+        setState(() => _analyzing = false);
+      }
+    }
+  }
+
+  Widget _buildAiSuggestions() => AppCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'AI category & priority',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        if (_analyzing)
+          const LinearProgressIndicator()
+        else if (_analysis != null) ...[
+          Text('Suggested category: ${_analysis!.category}'),
+          Text('Priority: ${_analysis!.priority}'),
+          if (_analysis!.rationale.isNotEmpty) Text(_analysis!.rationale),
+          if (_analysis!.needsReview)
+            const Text('Please review these suggestions carefully.'),
+          const Text('You can change the category above.'),
+        ] else
+          Text(
+            _aiError ??
+                'Add a title and description to get automatic suggestions.',
+          ),
+        if (_aiError != null)
+          TextButton(onPressed: _analyze, child: const Text('Retry AI')),
+      ],
+    ),
+  );
 
   final List<String> _categories = [
     'Water Management',
@@ -105,6 +193,14 @@ class _SubmitChallengeViewState extends ConsumerState<SubmitChallengeView> {
   @override
   void initState() {
     super.initState();
+    for (final controller in [
+      _titleController,
+      _descriptionController,
+      _additionalController,
+      _locationController,
+    ]) {
+      controller.addListener(_scheduleAnalysis);
+    }
 
     _playerCompleteSubscription = _audioPlayer.onPlayerComplete.listen((_) {
       if (!mounted) return;
@@ -117,6 +213,7 @@ class _SubmitChallengeViewState extends ConsumerState<SubmitChallengeView> {
 
   @override
   void dispose() {
+    _aiDebounce?.cancel();
     _voiceTranscriptSubscription?.cancel();
     _playerCompleteSubscription?.cancel();
 
@@ -138,350 +235,358 @@ class _SubmitChallengeViewState extends ConsumerState<SubmitChallengeView> {
   Widget build(BuildContext context) {
     final submissionState = ref.watch(citizenControllerProvider);
 
-    final isSubmitting = submissionState.isLoading;
+    final isSubmitting = submissionState.isLoading || _preparingSubmission;
 
     return PageFrame(
       title: 'Submit Challenge',
       color: AppColors.citizen,
-      child: Form(
-        key: _formKey,
-        autovalidateMode: AutovalidateMode.onUserInteraction,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(18, 14, 18, 36),
-          children: [
-            _buildHero(),
+      child: AbsorbPointer(
+        absorbing: isSubmitting,
+        child: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 36),
+            children: [
+              _buildHero(),
 
-            const SizedBox(height: 26),
+              const SizedBox(height: 26),
 
-            // ==================================================
-            // TITLE
-            // ==================================================
-            _sectionTitle(
-              'Challenge title',
-              'Type it or tap the microphone and describe it in your own words.',
-            ),
-
-            const SizedBox(height: 10),
-
-            TextFormField(
-              controller: _titleController,
-              textCapitalization: TextCapitalization.sentences,
-              maxLength: 80,
-              decoration: _inputDecoration(
-                hint: 'e.g. Water shortage in Ward 12',
-                icon: Icons.title_rounded,
-              ).copyWith(suffixIcon: _voiceButton(_VoiceField.title)),
-              validator: (value) {
-                final text = value?.trim() ?? '';
-
-                if (text.isEmpty) {
-                  return 'Please enter a title';
-                }
-
-                if (text.length < 5) {
-                  return 'Please add a little more detail';
-                }
-
-                return null;
-              },
-            ),
-
-            if (_activeVoiceField == _VoiceField.title && _isVoiceRecording)
-              _voiceRecordingIndicator('Listening and writing your title...'),
-
-            _buildVoiceAttachments(_VoiceField.title),
-
-            const SizedBox(height: 20),
-
-            // ==================================================
-            // CATEGORY
-            // ==================================================
-            _sectionTitle(
-              'Category',
-              'Choose the area that best matches the challenge.',
-            ),
-
-            const SizedBox(height: 12),
-
-            Wrap(
-              spacing: 8,
-              runSpacing: 9,
-              children: _categories.map((item) {
-                final selected = item == _category;
-
-                return ChoiceChip(
-                  label: Text(item),
-                  selected: selected,
-                  showCheckmark: false,
-                  avatar: selected
-                      ? Icon(
-                          Icons.check_circle_rounded,
-                          size: 17,
-                          color: AppColors.citizen,
-                        )
-                      : null,
-                  onSelected: (_) {
-                    setState(() {
-                      _category = item;
-                    });
-                  },
-                  labelStyle: TextStyle(
-                    fontSize: 13,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    color: selected
-                        ? AppColors.citizen
-                        : const Color(0xFF475467),
-                  ),
-                  selectedColor: AppColors.citizen.withOpacity(.10),
-                  backgroundColor: Colors.white,
-                  side: BorderSide(
-                    color: selected
-                        ? AppColors.citizen.withOpacity(.40)
-                        : const Color(0xFFD9E0EA),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                );
-              }).toList(),
-            ),
-
-            const SizedBox(height: 26),
-
-            // ==================================================
-            // DESCRIPTION
-            // ==================================================
-            _sectionTitle(
-              'Describe the issue',
-              'Write or speak what is happening, who is affected, and why it needs attention.',
-            ),
-
-            const SizedBox(height: 10),
-
-            TextFormField(
-              controller: _descriptionController,
-              textCapitalization: TextCapitalization.sentences,
-              minLines: 4,
-              maxLines: 7,
-              maxLength: 600,
-              decoration: _inputDecoration(
-                hint:
-                    'Describe what you have observed and why it needs attention...',
-                icon: Icons.notes_rounded,
-                alignTop: true,
-              ).copyWith(suffixIcon: _voiceButton(_VoiceField.description)),
-              validator: (value) {
-                final text = value?.trim() ?? '';
-
-                if (text.isEmpty) {
-                  return 'Please describe the challenge';
-                }
-
-                if (text.length < 15) {
-                  return 'Please provide a little more detail';
-                }
-
-                return null;
-              },
-            ),
-
-            if (_activeVoiceField == _VoiceField.description &&
-                _isVoiceRecording)
-              _voiceRecordingIndicator(
-                'Listening and writing your description...',
+              // ==================================================
+              // TITLE
+              // ==================================================
+              _sectionTitle(
+                'Challenge title',
+                'Type it or tap the microphone and describe it in your own words.',
               ),
 
-            _buildVoiceAttachments(_VoiceField.description),
+              const SizedBox(height: 10),
 
-            const SizedBox(height: 20),
+              TextFormField(
+                controller: _titleController,
+                textCapitalization: TextCapitalization.sentences,
+                maxLength: 80,
+                decoration: _inputDecoration(
+                  hint: 'e.g. Water shortage in Ward 12',
+                  icon: Icons.title_rounded,
+                ).copyWith(suffixIcon: _voiceButton(_VoiceField.title)),
+                validator: (value) {
+                  final text = value?.trim() ?? '';
 
-            // ==================================================
-            // LOCATION
-            // ==================================================
-            _sectionTitle(
-              'Location',
-              'Enter the place manually or use your current location.',
-            ),
+                  if (text.isEmpty) {
+                    return 'Please enter a title';
+                  }
 
-            const SizedBox(height: 10),
+                  if (text.length < 5) {
+                    return 'Please add a little more detail';
+                  }
 
-            TextFormField(
-              controller: _locationController,
-              textCapitalization: TextCapitalization.words,
-              onChanged: (_) {
-                if (_latitude != null || _longitude != null) {
-                  setState(() {
-                    _latitude = null;
-                    _longitude = null;
-                  });
-                }
-              },
-              decoration:
-                  _inputDecoration(
-                    hint: 'City, district or area',
-                    icon: Icons.location_on_outlined,
-                  ).copyWith(
-                    suffixIcon: _isGettingLocation
-                        ? const Padding(
-                            padding: EdgeInsets.all(14),
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
+                  return null;
+                },
+              ),
+
+              if (_activeVoiceField == _VoiceField.title && _isVoiceRecording)
+                _voiceRecordingIndicator('Listening and writing your title...'),
+
+              _buildVoiceAttachments(_VoiceField.title),
+
+              const SizedBox(height: 20),
+
+              // ==================================================
+              // CATEGORY
+              // ==================================================
+              _sectionTitle(
+                'Category',
+                'Choose the area that best matches the challenge.',
+              ),
+
+              const SizedBox(height: 12),
+
+              Wrap(
+                spacing: 8,
+                runSpacing: 9,
+                children: _categories.map((item) {
+                  final selected = item == _category;
+
+                  return ChoiceChip(
+                    label: Text(item),
+                    selected: selected,
+                    showCheckmark: false,
+                    avatar: selected
+                        ? Icon(
+                            Icons.check_circle_rounded,
+                            size: 17,
+                            color: AppColors.citizen,
                           )
-                        : IconButton(
-                            tooltip: 'Use current location',
-                            onPressed: _getCurrentLocation,
-                            icon: Icon(
-                              Icons.my_location_rounded,
-                              color: AppColors.citizen,
+                        : null,
+                    onSelected: (_) {
+                      setState(() {
+                        _category = item;
+                        _categoryOverridden = true;
+                      });
+                    },
+                    labelStyle: TextStyle(
+                      fontSize: 13,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: selected
+                          ? AppColors.citizen
+                          : const Color(0xFF475467),
+                    ),
+                    selectedColor: AppColors.citizen.withOpacity(.10),
+                    backgroundColor: Colors.white,
+                    side: BorderSide(
+                      color: selected
+                          ? AppColors.citizen.withOpacity(.40)
+                          : const Color(0xFFD9E0EA),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 26),
+
+              // ==================================================
+              // DESCRIPTION
+              // ==================================================
+              _sectionTitle(
+                'Describe the issue',
+                'Write or speak what is happening, who is affected, and why it needs attention.',
+              ),
+
+              const SizedBox(height: 10),
+
+              TextFormField(
+                controller: _descriptionController,
+                textCapitalization: TextCapitalization.sentences,
+                minLines: 4,
+                maxLines: 7,
+                maxLength: 600,
+                decoration: _inputDecoration(
+                  hint:
+                      'Describe what you have observed and why it needs attention...',
+                  icon: Icons.notes_rounded,
+                  alignTop: true,
+                ).copyWith(suffixIcon: _voiceButton(_VoiceField.description)),
+                validator: (value) {
+                  final text = value?.trim() ?? '';
+
+                  if (text.isEmpty) {
+                    return 'Please describe the challenge';
+                  }
+
+                  if (text.length < 15) {
+                    return 'Please provide a little more detail';
+                  }
+
+                  return null;
+                },
+              ),
+
+              if (_activeVoiceField == _VoiceField.description &&
+                  _isVoiceRecording)
+                _voiceRecordingIndicator(
+                  'Listening and writing your description...',
+                ),
+
+              _buildVoiceAttachments(_VoiceField.description),
+              const SizedBox(height: 12),
+              _buildAiSuggestions(),
+
+              const SizedBox(height: 20),
+
+              // ==================================================
+              // LOCATION
+              // ==================================================
+              _sectionTitle(
+                'Location',
+                'Enter the place manually or use your current location.',
+              ),
+
+              const SizedBox(height: 10),
+
+              TextFormField(
+                controller: _locationController,
+                textCapitalization: TextCapitalization.words,
+                onChanged: (_) {
+                  if (_latitude != null || _longitude != null) {
+                    setState(() {
+                      _latitude = null;
+                      _longitude = null;
+                    });
+                  }
+                },
+                decoration:
+                    _inputDecoration(
+                      hint: 'City, district or area',
+                      icon: Icons.location_on_outlined,
+                    ).copyWith(
+                      suffixIcon: _isGettingLocation
+                          ? const Padding(
+                              padding: EdgeInsets.all(14),
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            )
+                          : IconButton(
+                              tooltip: 'Use current location',
+                              onPressed: _getCurrentLocation,
+                              icon: Icon(
+                                Icons.my_location_rounded,
+                                color: AppColors.citizen,
+                              ),
                             ),
-                          ),
-                  ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter a location';
-                }
+                    ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter a location';
+                  }
 
-                return null;
-              },
-            ),
+                  return null;
+                },
+              ),
 
-            if (_latitude != null && _longitude != null) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(
-                    Icons.check_circle_rounded,
-                    size: 16,
-                    color: AppColors.citizen,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Location detected successfully',
-                    style: TextStyle(
-                      fontSize: 12,
+              if (_latitude != null && _longitude != null) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle_rounded,
+                      size: 16,
                       color: AppColors.citizen,
-                      fontWeight: FontWeight.w600,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Location detected successfully',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.citizen,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+
+              const SizedBox(height: 26),
+
+              // ==================================================
+              // MEDIA
+              // ==================================================
+              _sectionTitle(
+                'Add evidence',
+                'Add a photo or video to help others understand the issue.',
+                optional: true,
+              ),
+
+              const SizedBox(height: 12),
+
+              _buildMediaCard(),
+
+              const SizedBox(height: 26),
+
+              // ==================================================
+              // ADDITIONAL INFORMATION
+              // ==================================================
+              _sectionTitle(
+                'Anything else?',
+                'Type or speak any other useful information.',
+                optional: true,
+              ),
+
+              const SizedBox(height: 10),
+
+              TextFormField(
+                controller: _additionalController,
+                textCapitalization: TextCapitalization.sentences,
+                minLines: 3,
+                maxLines: 5,
+                maxLength: 300,
+                decoration: _inputDecoration(
+                  hint:
+                      'Nearby landmark, previous complaints, best time to visit...',
+                  icon: Icons.info_outline_rounded,
+                  alignTop: true,
+                ).copyWith(suffixIcon: _voiceButton(_VoiceField.additional)),
+              ),
+
+              if (_activeVoiceField == _VoiceField.additional &&
+                  _isVoiceRecording)
+                _voiceRecordingIndicator('Listening...'),
+
+              _buildVoiceAttachments(_VoiceField.additional),
+
+              const SizedBox(height: 28),
+
+              // ==================================================
+              // ATTACHMENT SUMMARY
+              // ==================================================
+              if (_selectedMedia != null || _voiceAttachments.isNotEmpty)
+                _buildAttachmentSummary(),
+
+              if (_selectedMedia != null || _voiceAttachments.isNotEmpty)
+                const SizedBox(height: 18),
+
+              _buildInfoBox(),
+
+              const SizedBox(height: 22),
+
+              // ==================================================
+              // SUBMIT
+              // ==================================================
+              SizedBox(
+                height: 54,
+                child: FilledButton.icon(
+                  onPressed: isSubmitting || _isVoiceRecording ? null : _submit,
+                  icon: isSubmitting
+                      ? const SizedBox(
+                          width: 19,
+                          height: 19,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.send_rounded),
+                  label: Text(
+                    _isVoiceRecording
+                        ? 'Finish voice recording first'
+                        : isSubmitting
+                        ? 'Submitting...'
+                        : 'Submit Challenge',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
                     ),
                   ),
-                ],
-              ),
-            ],
-
-            const SizedBox(height: 26),
-
-            // ==================================================
-            // MEDIA
-            // ==================================================
-            _sectionTitle(
-              'Add evidence',
-              'Add a photo or video to help others understand the issue.',
-              optional: true,
-            ),
-
-            const SizedBox(height: 12),
-
-            _buildMediaCard(),
-
-            const SizedBox(height: 26),
-
-            // ==================================================
-            // ADDITIONAL INFORMATION
-            // ==================================================
-            _sectionTitle(
-              'Anything else?',
-              'Type or speak any other useful information.',
-              optional: true,
-            ),
-
-            const SizedBox(height: 10),
-
-            TextFormField(
-              controller: _additionalController,
-              textCapitalization: TextCapitalization.sentences,
-              minLines: 3,
-              maxLines: 5,
-              maxLength: 300,
-              decoration: _inputDecoration(
-                hint:
-                    'Nearby landmark, previous complaints, best time to visit...',
-                icon: Icons.info_outline_rounded,
-                alignTop: true,
-              ).copyWith(suffixIcon: _voiceButton(_VoiceField.additional)),
-            ),
-
-            if (_activeVoiceField == _VoiceField.additional &&
-                _isVoiceRecording)
-              _voiceRecordingIndicator('Listening...'),
-
-            _buildVoiceAttachments(_VoiceField.additional),
-
-            const SizedBox(height: 28),
-
-            // ==================================================
-            // ATTACHMENT SUMMARY
-            // ==================================================
-            if (_selectedMedia != null || _voiceAttachments.isNotEmpty)
-              _buildAttachmentSummary(),
-
-            if (_selectedMedia != null || _voiceAttachments.isNotEmpty)
-              const SizedBox(height: 18),
-
-            _buildInfoBox(),
-
-            const SizedBox(height: 22),
-
-            // ==================================================
-            // SUBMIT
-            // ==================================================
-            SizedBox(
-              height: 54,
-              child: FilledButton.icon(
-                onPressed: isSubmitting || _isVoiceRecording ? null : _submit,
-                icon: isSubmitting
-                    ? const SizedBox(
-                        width: 19,
-                        height: 19,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.send_rounded),
-                label: Text(
-                  _isVoiceRecording
-                      ? 'Finish voice recording first'
-                      : isSubmitting
-                      ? 'Submitting...'
-                      : 'Submit Challenge',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.citizen,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.citizen,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            if (submissionState.hasError) ...[
-              const SizedBox(height: 12),
-              Text(
-                submissionState.error.toString().replaceFirst(
-                  'Exception: ',
-                  '',
+              if (submissionState.hasError) ...[
+                const SizedBox(height: 12),
+                Text(
+                  submissionState.error.toString().replaceFirst(
+                    'Exception: ',
+                    '',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 12),
                 ),
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.redAccent, fontSize: 12),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -492,6 +597,9 @@ class _SubmitChallengeViewState extends ConsumerState<SubmitChallengeView> {
   // ============================================================
 
   Future<void> _submit() async {
+    if (_preparingSubmission || ref.read(citizenControllerProvider).isLoading) {
+      return;
+    }
     FocusScope.of(context).unfocus();
 
     if (_isVoiceRecording) {
@@ -502,6 +610,36 @@ class _SubmitChallengeViewState extends ConsumerState<SubmitChallengeView> {
 
     if (!_formKey.currentState!.validate()) {
       return;
+    }
+
+    setState(() => _preparingSubmission = true);
+    if (_analysis == null) await _analyze();
+    if (!mounted) return;
+    if (_analysis == null) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('AI suggestions unavailable'),
+          content: const Text(
+            'Submit with your selected category and Medium priority? An admin can review the priority later.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Go back'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Submit anyway'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      if (proceed != true) {
+        setState(() => _preparingSubmission = false);
+        return;
+      }
     }
 
     final voiceFiles = _voiceAttachments.map((voice) {
@@ -520,6 +658,7 @@ class _SubmitChallengeViewState extends ConsumerState<SubmitChallengeView> {
           description: _descriptionController.text.trim(),
 
           category: _category,
+          priority: _analysis?.priority ?? 'Medium',
 
           location: _locationController.text.trim(),
 
@@ -537,6 +676,8 @@ class _SubmitChallengeViewState extends ConsumerState<SubmitChallengeView> {
         );
 
     if (!mounted) return;
+
+    setState(() => _preparingSubmission = false);
 
     if (challenge == null) {
       final state = ref.read(citizenControllerProvider);

@@ -199,25 +199,25 @@ class AppRoutes {
         break;
 
       case Routes.projectDetail:
-        if (arguments is! Project) {
+        if (arguments is! String) {
           page = const _InvalidRouteArguments(
-            message: 'Project Details requires a Project.',
+            message: 'Project Details requires a project ID.',
           );
           break;
         }
 
-        page = ProjectDetails(p: arguments);
+        page = ProjectDetails(projectId: arguments);
         break;
 
       case Routes.interest:
-        if (arguments is! Project) {
+        if (arguments is! String) {
           page = const _InvalidRouteArguments(
-            message: 'Express Interest requires a Project.',
+            message: 'Express Interest requires a project ID.',
           );
           break;
         }
 
-        page = ExpressInterest(p: arguments);
+        page = ExpressInterest(projectId: arguments);
         break;
 
       case Routes.collaborations:
@@ -225,9 +225,15 @@ class AppRoutes {
         break;
 
       case Routes.chat:
-        page = const CollaborationChat();
-        break;
+        if (arguments is! String) {
+          page = const _InvalidRouteArguments(
+            message: 'Collaboration Chat requires a collaboration ID.',
+          );
+          break;
+        }
 
+        page = CollaborationChat(collaborationId: arguments);
+        break;
       // ========================================================
       // ADMIN
       // ========================================================

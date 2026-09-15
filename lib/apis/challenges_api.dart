@@ -132,7 +132,7 @@ class ChallengesApi {
     data['createdAt'] = FieldValue.serverTimestamp();
 
     data['updatedAt'] = FieldValue.serverTimestamp();
-
+  
     await _challenges.doc(id).set(data);
 
     return challengeToSave;

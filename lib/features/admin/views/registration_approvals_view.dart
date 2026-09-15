@@ -215,16 +215,28 @@ class _OrganizationOverviewState extends State<OrganizationOverview> {
       if (snapshot.hasError) return Text(authErrorMessage(snapshot.error!));
       return Row(
         children: [
-          Stat('${widget.challengeCount}', 'Challenges', AppColors.admin),
-          Stat(
-            snapshot.hasData ? '${snapshot.data!['university']}' : '…',
-            'Universities',
-            AppColors.admin,
+          Expanded(
+            child: Stat(
+              '${widget.challengeCount}',
+              'Challenges',
+              AppColors.admin,
+            ),
           ),
-          Stat(
-            snapshot.hasData ? '${snapshot.data!['industry']}' : '…',
-            'Industries',
-            AppColors.admin,
+          const SizedBox(width: 8),
+          Expanded(
+            child: Stat(
+              snapshot.hasData ? '${snapshot.data!['university']}' : '…',
+              'Universities',
+              AppColors.admin,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Stat(
+              snapshot.hasData ? '${snapshot.data!['industry']}' : '…',
+              'Industries',
+              AppColors.admin,
+            ),
           ),
         ],
       );

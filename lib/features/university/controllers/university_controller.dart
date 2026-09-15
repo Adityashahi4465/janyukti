@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../apis/universites_api.dart';
+import '../../../apis/ai_api.dart';
 import '../../../models/challenge_model.dart';
 import '../../../models/project_model.dart';
 import '../../../models/project_update_model.dart';
@@ -98,5 +99,6 @@ final universityRecommendationsProvider = FutureProvider.autoDispose
 
       final api = ref.watch(universitiesApiProvider);
 
-      return api.getBestUniversitiesForChallenge(challenge, limit: 10);
+      final universities = await api.getMatchingUniversities();
+      return ref.watch(aiApiProvider).match(challenge, universities);
     });

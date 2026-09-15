@@ -58,22 +58,27 @@ class _CreateProjectViewState extends ConsumerState<CreateProjectView> {
           section('Team Members'),
 
           for (final person in members)
-            AppCard(
-              padding: 8,
-              child: ListTile(
-                title: Text(person),
-                leading: const CircleAvatar(child: Icon(Icons.person)),
-                trailing: IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: busy
-                      ? null
-                      : () {
-                          setState(() {
-                            members.remove(person);
-                          });
-                        },
+            Column(
+              children: [
+                AppCard(
+                  padding: 8,
+                  child: ListTile(
+                    title: Text(person),
+                    leading: const CircleAvatar(child: Icon(Icons.person)),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: busy
+                          ? null
+                          : () {
+                              setState(() {
+                                members.remove(person);
+                              });
+                            },
+                    ),
+                  ),
                 ),
-              ),
+                SizedBox(height: 12),
+              ],
             ),
 
           Row(
@@ -113,7 +118,8 @@ class _CreateProjectViewState extends ConsumerState<CreateProjectView> {
           RoleButton(
             label: busy ? 'Creating...' : 'Create Project & Start',
             color: AppColors.university,
-            onTap: () => busy ? null : _create,
+            isLoading: busy,
+            onTap: _create,
           ),
         ],
       ),
@@ -121,6 +127,7 @@ class _CreateProjectViewState extends ConsumerState<CreateProjectView> {
   }
 
   Future<void> _create() async {
+    if (busy) return;
     if (name.text.trim().isEmpty || mentor.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -130,6 +137,7 @@ class _CreateProjectViewState extends ConsumerState<CreateProjectView> {
 
       return;
     }
+    print('dddddd');
 
     setState(() => busy = true);
 

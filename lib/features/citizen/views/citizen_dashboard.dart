@@ -149,15 +149,33 @@ class CitizenDashboard extends ConsumerWidget {
             else
               Row(
                 children: [
-                  Stat('$totalChallenges', 'Challenges', AppColors.citizen),
+                  Expanded(
+                    child: Stat(
+                      '$totalChallenges',
+                      'Challenges',
+                      AppColors.citizen,
+                    ),
+                  ),
 
                   const SizedBox(width: 8),
 
-                  Stat('$inProgressCount', 'In Progress', AppColors.citizen),
+                  Expanded(
+                    child: Stat(
+                      '$inProgressCount',
+                      'In Progress',
+                      AppColors.citizen,
+                    ),
+                  ),
 
                   const SizedBox(width: 8),
 
-                  Stat('$resolvedCount', 'Resolved', AppColors.citizen),
+                  Expanded(
+                    child: Stat(
+                      '$resolvedCount',
+                      'Resolved',
+                      AppColors.citizen,
+                    ),
+                  ),
                 ],
               ),
 
