@@ -5,9 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/providers/instance_providers.dart';
 import '../models/challenge_model.dart';
 
-// ============================================================
-// API PROVIDER
-// ============================================================
 
 final challengesApiProvider = Provider<ChallengesApi>((ref) {
   return ChallengesApi(
@@ -16,9 +13,6 @@ final challengesApiProvider = Provider<ChallengesApi>((ref) {
   );
 });
 
-// ============================================================
-// CHALLENGE API
-// ============================================================
 
 class ChallengesApi {
   ChallengesApi({
@@ -33,9 +27,6 @@ class ChallengesApi {
   CollectionReference<Map<String, dynamic>> get _challenges =>
       _db.collection('challenges');
 
-  // ============================================================
-  // CURRENT USER
-  // ============================================================
 
   User get currentUser {
     final user = _auth.currentUser;
@@ -67,17 +58,9 @@ class ChallengesApi {
     return 'User';
   }
 
-  // ============================================================
-  // GENERATE ID
-  // ============================================================
-
   String generateChallengeId() {
     return _challenges.doc().id;
   }
-
-  // ============================================================
-  // CREATE
-  // ============================================================
 
   Future<Challenge> createChallenge(Challenge challenge) async {
     final user = currentUser;
@@ -132,15 +115,11 @@ class ChallengesApi {
     data['createdAt'] = FieldValue.serverTimestamp();
 
     data['updatedAt'] = FieldValue.serverTimestamp();
-  
+
     await _challenges.doc(id).set(data);
 
     return challengeToSave;
   }
-
-  // ============================================================
-  // GET SINGLE
-  // ============================================================
 
   Future<Challenge?> getChallenge(String challengeId) async {
     if (challengeId.trim().isEmpty) {
@@ -162,10 +141,6 @@ class ChallengesApi {
     return Challenge.fromMap(id: snapshot.id, map: data);
   }
 
-  // ============================================================
-  // WATCH SINGLE
-  // ============================================================
-
   Stream<Challenge?> watchChallenge(String challengeId) {
     if (challengeId.trim().isEmpty) {
       throw Exception('Challenge ID is required');
@@ -185,10 +160,6 @@ class ChallengesApi {
       return Challenge.fromMap(id: snapshot.id, map: data);
     });
   }
-
-  // ============================================================
-  // WATCH ALL
-  // ============================================================
 
   Stream<List<Challenge>> watchChallenges() {
     return _challenges.orderBy('createdAt', descending: true).snapshots().map((
@@ -216,9 +187,6 @@ class ChallengesApi {
           return challenges;
         });
   }
-  // ============================================================
-  // UPDATE STATUS
-  // ============================================================
 
   Future<void> updateStatus({
     required String challengeId,
@@ -262,10 +230,6 @@ class ChallengesApi {
 
     final value = normalizedStatus.toLowerCase();
 
-    // ==========================================================
-    // UNDER REVIEW
-    // ==========================================================
-
     if (value == 'under review') {
       update.addAll({
         'reviewedById': user.uid,
@@ -276,17 +240,9 @@ class ChallengesApi {
       });
     }
 
-    // ==========================================================
-    // SOLUTION DEPLOYED
-    // ==========================================================
-
     if (value == 'solution deployed' || value == 'deployed') {
       update['solutionDeployedAt'] = FieldValue.serverTimestamp();
     }
-
-    // ==========================================================
-    // RESOLVED
-    // ==========================================================
 
     if (value == 'resolved' || value == 'completed') {
       update['resolvedAt'] = FieldValue.serverTimestamp();
@@ -294,10 +250,6 @@ class ChallengesApi {
 
     await _challenges.doc(normalizedId).update(update);
   }
-
-  // ============================================================
-  // UPDATE PRIORITY
-  // ============================================================
 
   Future<void> updatePriority({
     required String challengeId,
@@ -327,10 +279,6 @@ class ChallengesApi {
       'lastUpdatedByName': currentUserName,
     });
   }
-
-  // ============================================================
-  // ASSIGN UNIVERSITY
-  // ============================================================
 
   Future<void> assignUniversity({
     required String challengeId,

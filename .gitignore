@@ -43,3 +43,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+venv/
+.venv*/
+.python/
+.uv-cache/
+.env
+__pycache__/
+.pytest_cache/
+*.db
+*.db-shm
+*.db-wal
+uploads/

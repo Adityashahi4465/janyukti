@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/routes/app_routes.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
-import 'shared/mock_data/app_store.dart';
 import 'core/localization/app_localizations.dart';
 import 'firebase_options.dart';
 
